@@ -1,0 +1,95 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Workflow",
+  "document_type": "Program Enrollment",
+  "enable_action_confirmation": 0,
+  "is_active": 1,
+  "modified": "2026-10-29 23:39:37.976700",
+  "name": "Admission Approval",
+  "override_status": 0,
+  "send_email_alert": 0,
+  "states": [
+   {
+    "allow_edit": "School Admin",
+    "avoid_status_override": 0,
+    "doc_status": "0",
+    "evaluate_as_expression": 0,
+    "is_optional_state": 0,
+    "message": null,
+    "next_action_email_template": null,
+    "send_email": 1,
+    "state": "Draft",
+    "update_field": null,
+    "update_value": null,
+    "workflow_builder_id": null
+   },
+   {
+    "allow_edit": "Principal",
+    "avoid_status_override": 0,
+    "doc_status": "0",
+    "evaluate_as_expression": 0,
+    "is_optional_state": 0,
+    "message": null,
+    "next_action_email_template": null,
+    "send_email": 1,
+    "state": "Pending Principal Approval",
+    "update_field": null,
+    "update_value": null,
+    "workflow_builder_id": null
+   },
+   {
+    "allow_edit": "Principal",
+    "avoid_status_override": 0,
+    "doc_status": "1",
+    "evaluate_as_expression": 0,
+    "is_optional_state": 0,
+    "message": null,
+    "next_action_email_template": null,
+    "send_email": 1,
+    "state": "Enrolled",
+    "update_field": null,
+    "update_value": null,
+    "workflow_builder_id": null
+   }
+  ],
+  "transitions": [
+   {
+    "action": "Apply for Approval",
+    "allow_self_approval": 1,
+    "allowed": "School Admin",
+    "condition": null,
+    "next_state": "Pending Principal Approval",
+    "send_email_to_creator": 0,
+    "state": "Draft",
+    "transition_tasks": null,
+    "workflow_builder_id": null
+   },
+   {
+    "action": "Approve",
+    "allow_self_approval": 1,
+    "allowed": "Principal",
+    "condition": null,
+    "next_state": "Enrolled",
+    "send_email_to_creator": 0,
+    "state": "Pending Principal Approval",
+    "transition_tasks": null,
+    "workflow_builder_id": null
+   },
+   {
+    "action": "Reject",
+    "allow_self_approval": 1,
+    "allowed": "Principal",
+    "condition": null,
+    "next_state": "Draft",
+    "send_email_to_creator": 0,
+    "state": "Pending Principal Approval",
+    "transition_tasks": null,
+    "workflow_builder_id": null
+   }
+  ],
+  "workflow_data": null,
+  "workflow_name": "Admission Approval",
+  "workflow_state_field": "workflow_state"
+ }
+]

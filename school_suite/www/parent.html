@@ -1,0 +1,94 @@
+{% extends "templates/web.html" %}
+{% block title %}Parent Portal{% endblock %}
+
+{% block page_content %}
+<div class="parent-portal" style="max-width:960px;margin:0 auto;">
+  <h1 style="margin-bottom:4px;">Parent Portal</h1>
+  <p class="text-muted">Signed in as {{ guardian_name }}</p>
+
+  {% if not children %}
+    <div class="alert alert-info">No children are linked to your account yet.
+      Please contact the school office.</div>
+  {% endif %}
+
+  {% for c in children %}
+  <div class="card" style="margin:16px 0;border:1px solid #e2e8f0;border-radius:10px;padding:18px;">
+    <h3 style="margin:0 0 12px;">{{ c.student_name }} <small class="text-muted">({{ c.name }})</small></h3>
+
+    <div class="row">
+      <!-- Attendance -->
+      <div class="col-sm-4">
+        <h5>Attendance</h5>
+        {% if c.attendance.percentage is not none %}
+          <div style="font-size:28px;font-weight:600;">{{ c.attendance.percentage }}%</div>
+          <small class="text-muted">
+            {{ c.attendance.present }} present / {{ c.attendance.absent }} absent
+            / {{ c.attendance.leave }} leave ({{ c.attendance.total }} days)
+          </small>
+        {% else %}<span class="text-muted">No attendance recorded</span>{% endif %}
+      </div>
+
+      <!-- Fees -->
+      <div class="col-sm-4">
+        <h5>Fees</h5>
+        <div>Billed: <b>{{ c.fees.billed }}</b></div>
+        <div>Paid: <b>{{ c.fees.paid }}</b></div>
+        <div>Outstanding:
+          <b style="color:{{ 'var(--red-600,#dc2626)' if c.fees.outstanding else 'var(--green-600,#16a34a)' }};">
+            {{ c.fees.outstanding }}</b>
+        </div>
+        <small class="text-muted">{{ c.fees.invoice_count }} receipt(s)</small>
+      </div>
+
+      <!-- LMS -->
+      <div class="col-sm-4">
+        <h5>Online Learning</h5>
+        {% if c.lms.enrollments %}
+          {% for e in c.lms.enrollments %}
+            <div style="margin-bottom:6px;">
+              <div>{{ e.course_title or e.course }}</div>
+              <div style="background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden;">
+                <div style="background:#2563eb;height:8px;width:{{ e.progress or 0 }}%;"></div>
+              </div>
+              <small class="text-muted">{{ e.progress or 0 }}% complete</small>
+            </div>
+          {% endfor %}
+        {% else %}<span class="text-muted">Not enrolled in any course</span>{% endif %}
+        {% if c.lms.certificates %}
+          <div style="margin-top:6px;"><b>{{ c.lms.certificates|length }}</b> certificate(s)</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Grades -->
+    <h5 style="margin-top:16px;">Recent Grades</h5>
+    {% if c.grades %}
+      <table class="table table-bordered table-sm" style="margin-bottom:8px;">
+        <thead><tr><th>Course</th><th>Assessment</th><th>Score</th><th>Grade</th></tr></thead>
+        <tbody>
+          {% for g in c.grades[:8] %}
+          <tr><td>{{ g.course }}</td><td>{{ g.assessment_group }}</td>
+              <td>{{ g.total_score }}/{{ g.maximum_score }}</td><td>{{ g.grade }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}<span class="text-muted">No grades published yet</span>{% endif %}
+
+    <!-- Timetable -->
+    <h5 style="margin-top:16px;">Upcoming / Recent Timetable</h5>
+    {% if c.timetable %}
+      <table class="table table-bordered table-sm">
+        <thead><tr><th>Date</th><th>Course</th><th>Time</th><th>Room</th><th>Teacher</th></tr></thead>
+        <tbody>
+          {% for t in c.timetable[:8] %}
+          <tr><td>{{ t.schedule_date }}</td><td>{{ t.course }}</td>
+              <td>{{ t.from_time }}–{{ t.to_time }}</td><td>{{ t.room or '' }}</td>
+              <td>{{ t.instructor_name or '' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}<span class="text-muted">No scheduled classes</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

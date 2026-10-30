@@ -1,0 +1,55 @@
+{% extends "templates/web.html" %}
+{% block title %}Principal Dashboard{% endblock %}
+
+{% block page_content %}
+<div style="max-width:960px;margin:0 auto;">
+  <h1>Principal Dashboard</h1>
+
+  <!-- KPI tiles -->
+  <div class="row" style="margin:12px 0;">
+    {% set t = data.totals %}
+    {% for label, val in [("Students", t.students), ("Guardians", t.guardians),
+                          ("Classes", t.student_groups), ("LMS Courses", t.lms_courses)] %}
+    <div class="col-sm-3">
+      <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;">{{ val }}</div>
+        <small class="text-muted">{{ label }}</small>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Fee collection -->
+  <h4>Fee Collection</h4>
+  {% set f = data.fee_collection %}
+  <table class="table table-bordered table-sm" style="max-width:480px;">
+    <tr><td>Billed</td><td><b>{{ f.billed }}</b></td></tr>
+    <tr><td>Collected</td><td><b style="color:#16a34a;">{{ f.collected }}</b></td></tr>
+    <tr><td>Outstanding</td><td><b style="color:#dc2626;">{{ f.outstanding }}</b></td></tr>
+  </table>
+
+  <!-- Class-wise attendance -->
+  <h4>Class-wise Attendance</h4>
+  <table class="table table-bordered table-sm">
+    <thead><tr><th>Class</th><th>Present</th><th>Total</th><th>Attendance %</th></tr></thead>
+    <tbody>
+      {% for a in data.attendance_by_group %}
+      <tr><td>{{ a.group }}</td><td>{{ a.present }}</td><td>{{ a.total }}</td>
+          <td>{{ a.percentage }}%</td></tr>
+      {% else %}<tr><td colspan="4" class="text-muted">No attendance recorded</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Course completion -->
+  <h4>Online Course Completion</h4>
+  <table class="table table-bordered table-sm">
+    <thead><tr><th>Course</th><th>Learners</th><th>Avg Progress</th></tr></thead>
+    <tbody>
+      {% for c in data.course_completion %}
+      <tr><td>{{ c.course_title or c.course }}</td><td>{{ c.learners }}</td>
+          <td>{{ c.avg_progress }}%</td></tr>
+      {% else %}<tr><td colspan="3" class="text-muted">No course data</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

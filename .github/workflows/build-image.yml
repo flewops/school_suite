@@ -1,0 +1,54 @@
+name: Build pinned production image
+
+# Builds the full-stack v16 image (ERPNext + Education + HRMS + LMS +
+# India Compliance + Payments + school_suite) and pushes it to GHCR.
+# Pins match the verified local pilot.
+
+on:
+  push:
+    branches: [version-16]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout frappe_docker
+        uses: actions/checkout@v4
+        with:
+          repository: frappe/frappe_docker
+          ref: main
+
+      - name: Checkout school_suite (for deploy/apps.json)
+        uses: actions/checkout@v4
+        with:
+          path: school_suite
+
+      - name: Encode apps.json
+        id: apps
+        run: echo "b64=$(base64 -w0 school_suite/deploy/apps.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: images/layered/Containerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/school-erp:v16
+          build-args: |
+            FRAPPE_PATH=https://github.com/frappe/frappe
+            FRAPPE_BRANCH=version-16
+            PYTHON_VERSION=3.14.10
+            NODE_VERSION=24.22.2
+            APPS_JSON_BASE64=${{ steps.apps.outputs.b64 }}

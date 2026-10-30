@@ -1,0 +1,9 @@
+[
+  { "url": "https://github.com/frappe/erpnext",                  "branch": "version-16" },
+  { "url": "https://github.com/frappe/payments",                 "branch": "version-16-hotfix" },
+  { "url": "https://github.com/frappe/hrms",                     "branch": "version-16" },
+  { "url": "https://github.com/frappe/education",                "branch": "version-16" },
+  { "url": "https://github.com/resilient-tech/india-compliance", "branch": "version-16" },
+  { "url": "https://github.com/frappe/lms",                      "branch": "version-16" },
+  { "url": "https://github.com/YOUR-ORG/school_suite",           "branch": "version-16" }
+]
