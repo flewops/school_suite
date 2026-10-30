@@ -164,6 +164,14 @@ school) and S3 backups/restore: **`deployment.md`**.
 - **Version mismatch errors on install** — make sure *every* app is `version-16`
   (payments uses `version-16-hotfix`); don't mix branches.
 - **Site loads but assets look broken** — run `bench build` then hard-refresh.
+- **`bench build` dies with `Killed` / exit code 137** — out of memory. Give Docker
+  Desktop at least 8 GB (Settings → Resources → Memory), stop any running
+  `bench start` (its watcher holds ~1.5 GB), and build one app at a time
+  (`bench build --app <app>`). `setup_local.sh` does all of this for you.
+- **Browser shows `AttributeError: is_ajax`** — that hides the real error, which
+  is in the bench log: usually `Access denied for user '_xxxx'`. The site folder
+  (on your Mac's disk) survived but the MariaDB volume was reset, so the site's
+  database is gone. Re-run `setup_local.sh`; it detects this and recreates the site.
 - **After restore, something's off** — always run `bench --site <site> migrate`
   after a restore so schema + `school_suite` fixtures reconcile.
 ```
