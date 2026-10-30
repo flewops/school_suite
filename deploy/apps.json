@@ -5,5 +5,5 @@
   { "url": "https://github.com/frappe/education",                "branch": "version-16" },
   { "url": "https://github.com/resilient-tech/india-compliance", "branch": "version-16" },
   { "url": "https://github.com/frappe/lms",                      "branch": "version-16" },
-  { "url": "https://github.com/flewops/school_suite",            "branch": "version-16" }
+  { "url": "https://github.com/flewops/school_suite",            "branch": "main" }
 ]

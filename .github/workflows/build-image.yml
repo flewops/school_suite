@@ -4,9 +4,11 @@ name: Build pinned production image
 # India Compliance + Payments + school_suite) and pushes it to GHCR.
 # Pins match the verified local pilot.
 
+# Builds the production image from the prod branch (main). Pushes to version-16
+# (the working branch) don't build an image — promote to main to release.
 on:
   push:
-    branches: [version-16]
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
