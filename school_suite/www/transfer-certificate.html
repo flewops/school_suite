@@ -1,0 +1,48 @@
+{% extends "templates/web.html" %}
+{% block title %}{{ _("Transfer Certificate") }} · {{ tc.student_name }}{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% macro row(label, value) -%}
+<tr><th>{{ label }}</th><td>{{ value if value not in (none, "") else "" }}</td></tr>
+{%- endmacro %}
+
+{% block page_content %}
+{% include "school_suite/templates/includes/print_style.html" %}
+<div class="ss-print">
+  {% include "school_suite/templates/includes/school_header.html" %}
+  <h2 class="ss-title">{{ _("Transfer Certificate") }}</h2>
+
+  {% if tc.warnings %}
+  <div class="ss-warnings no-print">
+    <b>{{ _("Complete before printing:") }}</b>
+    <ul>{% for w in tc.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <table class="ss-meta">
+    {{ row(_("TC No."), tc.tc_number) }}
+    {{ row(_("Admission No."), tc.admission_number) }}
+    {{ row(_("PEN / APAAR ID"), [tc.pen, tc.apaar_id]|select|join(" / ")) }}
+    {{ row(_("Name of pupil"), tc.student_name) }}
+    {{ row(_("Father's name"), tc.father_name) }}
+    {{ row(_("Mother's name"), tc.mother_name) }}
+    {% if tc.guardian_name %}{{ row(_("Guardian's name"), tc.guardian_name) }}{% endif %}
+    {{ row(_("Nationality"), tc.nationality) }}
+    {{ row(_("Social category"), tc.social_category) }}
+    {{ row(_("Date of birth (figures)"), frappe.utils.formatdate(tc.date_of_birth) if tc.date_of_birth else "") }}
+    {{ row(_("Date of birth (words)"), tc.date_of_birth_in_words) }}
+    {{ row(_("Date of admission"), frappe.utils.formatdate(tc.date_of_admission) if tc.date_of_admission else "") }}
+    {{ row(_("Class last studied"), [tc.class_last_studied, tc.academic_year]|select|join(" — ")) }}
+    {{ row(_("Subjects studied"), tc.subjects_studied|join(", ")) }}
+    {{ row(_("Attendance"), _("{0} of {1} days").format(tc.attendance.present, tc.attendance.total) if tc.attendance.total else "") }}
+    {{ row(_("Fees outstanding"), frappe.utils.fmt_money(tc.fees_outstanding, currency="INR")) }}
+    {{ row(_("Date of leaving"), frappe.utils.formatdate(tc.date_of_leaving) if tc.date_of_leaving else "") }}
+    {{ row(_("Reason for leaving"), tc.reason_for_leaving) }}
+    {% for f in tc.manual_fields %}{{ row(f, "") }}{% endfor %}
+    {{ row(_("Date of issue"), frappe.utils.formatdate(tc.issued_on)) }}
+  </table>
+
+  {% include "school_suite/templates/includes/signatures.html" %}
+</div>
+{% endblock %}

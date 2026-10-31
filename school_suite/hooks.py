@@ -8,18 +8,21 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["frappe/erpnext", "frappe/education", "frappe/lms"]
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "school_suite",
-# 		"logo": "/assets/school_suite/logo.png",
-# 		"title": "School Suite",
-# 		"route": "/school_suite",
-# 		"has_permission": "school_suite.api.permission.has_app_permission",
-# 	}
-# ]
+# The "School" tile: staff and parents start here (/school sends each role to its
+# page). Education's own tile shows only to Education Manager, so without this a
+# teacher or parent has no visible way in.
+add_to_apps_screen = [
+	{
+		"name": "school_suite",
+		"logo": "/assets/school_suite/school.svg",
+		"title": "School",
+		"route": "/school",
+		"has_permission": "school_suite.api.has_app_permission",
+	}
+]
 
 # The dock, the rail down the left of the desk, is a document rather than a hook. Author it in
 # Manage Dock on a developer-mode site and press Export to App, and it is written to
@@ -70,9 +73,9 @@ app_license = "mit"
 # home_page = "login"
 
 # website user home page (by Role)
-role_home_page = {
-	"Parent/Guardian": "parent",
-}
+# No role_home_page: it sent anyone holding Parent/Guardian (Administrator, or a
+# teacher whose own child studies here) to /parent after login. Parents land on
+# /parent through the School app instead (api.set_guardian_default_app, www/school.py).
 
 # Generators
 # ----------
@@ -165,22 +168,13 @@ has_permission = {
 	"Assessment Result": "school_suite.permissions.student_record_has_permission",
 	"Program Enrollment": "school_suite.permissions.student_record_has_permission",
 	"Fees": "school_suite.permissions.student_record_has_permission",
+	"Course Enrollment": "school_suite.permissions.student_record_has_permission",
+	"Student Group": "school_suite.permissions.student_group_has_permission",
+	"Course Schedule": "school_suite.permissions.course_schedule_has_permission",
 }
 
-fixtures = [
-	{"doctype": "Role", "filters": {"name": ["in", [
-		"School Admin", "Accountant", "Teacher", "Student", "Parent/Guardian", "Principal",
-	]]}},
-	{"doctype": "Custom Field", "filters": {"name": ["in", [
-		"Student-online_mode",
-		"Student Group-enable_online_batch", "Student Group-lms_batch",
-		"LMS Batch-student_group",
-	]]}},
-	{"doctype": "Property Setter", "filters": {"name": ["in", [
-		"Student-student_email_id-reqd", "Fees-income_account-fetch_from",
-	]]}},
-	{"doctype": "Workflow", "filters": {"name": ["in", ["Admission Approval"]]}},
-]
+# No fixtures: roles, custom fields, property setters and the workflow are created
+# in code by school_suite.setup.install.run (after_install / after_migrate).
 
 # Document Events
 # ---------------
@@ -189,6 +183,27 @@ fixtures = [
 doc_events = {
 	"Student Group": {
 		"on_update": "school_suite.online_learning.on_student_group_update",
+	},
+	"Guardian": {
+		"on_update": "school_suite.api.set_guardian_default_app",
+	},
+	"Student Attendance": {
+		"on_submit": "school_suite.notify.on_attendance_submit",
+	},
+	# Education v16 bills through Sales Invoice (Fee Schedule); Fees is the legacy path.
+	"Sales Invoice": {
+		"before_validate": "school_suite.fees_policy.before_fee_validate",
+		"validate": "school_suite.fees_policy.warn_if_rte",
+	},
+	"Fees": {
+		"before_validate": "school_suite.fees_policy.before_fee_validate",
+		"validate": [
+			"school_suite.fees_policy.recompute_legacy_fee_totals",
+			"school_suite.fees_policy.warn_if_rte",
+		],
+	},
+	"Item": {
+		"before_validate": "school_suite.fees_policy.default_fee_item_sac",
 	},
 }
 
@@ -216,7 +231,9 @@ doc_events = {
 # Testing
 # -------
 
-# before_tests = "school_suite.install.before_tests"
+# Frappe runs only the tested app's own hook: complete the setup wizard on a fresh
+# test site through Education's bootstrap (a required app).
+before_tests = "education.education.test_utils.before_tests"
 
 # Extend DocType Class
 # ------------------------------
@@ -301,4 +318,3 @@ doc_events = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-

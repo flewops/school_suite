@@ -1,15 +1,15 @@
 {% extends "templates/web.html" %}
-{% block title %}Principal Dashboard{% endblock %}
+{% block title %}{{ _("Principal Dashboard") }}{% endblock %}
 
 {% block page_content %}
 <div style="max-width:960px;margin:0 auto;">
-  <h1>Principal Dashboard</h1>
+  <h1>{{ _("Principal Dashboard") }}</h1>
 
   <!-- KPI tiles -->
   <div class="row" style="margin:12px 0;">
     {% set t = data.totals %}
-    {% for label, val in [("Students", t.students), ("Guardians", t.guardians),
-                          ("Classes", t.student_groups), ("LMS Courses", t.lms_courses)] %}
+    {% for label, val in [(_("Students"), t.students), (_("Guardians"), t.guardians),
+                          (_("Classes"), t.student_groups), (_("LMS Courses"), t.lms_courses)] %}
     <div class="col-sm-3">
       <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;">
         <div style="font-size:28px;font-weight:700;">{{ val }}</div>
@@ -20,35 +20,47 @@
   </div>
 
   <!-- Fee collection -->
-  <h4>Fee Collection</h4>
-  {% set f = data.fee_collection %}
+  <h4>{{ _("Fee Collection") }}</h4>
   <table class="table table-bordered table-sm" style="max-width:480px;">
-    <tr><td>Billed</td><td><b>{{ f.billed }}</b></td></tr>
-    <tr><td>Collected</td><td><b style="color:#16a34a;">{{ f.collected }}</b></td></tr>
-    <tr><td>Outstanding</td><td><b style="color:#dc2626;">{{ f.outstanding }}</b></td></tr>
+    <tr><td>{{ _("Billed") }}</td><td><b>{{ fee_fmt.billed }}</b></td></tr>
+    <tr><td>{{ _("Collected") }}</td><td><b style="color:#16a34a;">{{ fee_fmt.collected }}</b></td></tr>
+    <tr><td>{{ _("Outstanding") }}</td><td><b style="color:#dc2626;">{{ fee_fmt.outstanding }}</b></td></tr>
   </table>
 
   <!-- Class-wise attendance -->
-  <h4>Class-wise Attendance</h4>
+  <h4>{{ _("Class-wise Attendance") }}</h4>
   <table class="table table-bordered table-sm">
-    <thead><tr><th>Class</th><th>Present</th><th>Total</th><th>Attendance %</th></tr></thead>
+    <thead><tr><th>{{ _("Class") }}</th><th>{{ _("Present") }}</th><th>{{ _("Total") }}</th><th>{{ _("Attendance %") }}</th></tr></thead>
     <tbody>
       {% for a in data.attendance_by_group %}
       <tr><td>{{ a.group }}</td><td>{{ a.present }}</td><td>{{ a.total }}</td>
           <td>{{ a.percentage }}%</td></tr>
-      {% else %}<tr><td colspan="4" class="text-muted">No attendance recorded</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="4" class="text-muted">{{ _("No attendance recorded") }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Below the board-exam attendance bar -->
+  <h4>{{ _("Attendance below {0}%").format(data.low_attendance_threshold) }}</h4>
+  <table class="table table-bordered table-sm">
+    <thead><tr><th>{{ _("Student") }}</th><th>{{ _("Present") }}</th><th>{{ _("Total") }}</th><th>{{ _("Attendance %") }}</th></tr></thead>
+    <tbody>
+      {% for s in data.low_attendance %}
+      <tr><td>{{ s.student_name }} <small class="text-muted">({{ s.student }})</small></td>
+          <td>{{ s.present }}</td><td>{{ s.total }}</td>
+          <td style="color:#dc2626;">{{ s.percentage }}%</td></tr>
+      {% else %}<tr><td colspan="4" class="text-muted">{{ _("No student below {0}%").format(data.low_attendance_threshold) }}</td></tr>{% endfor %}
     </tbody>
   </table>
 
   <!-- Course completion -->
-  <h4>Online Course Completion</h4>
+  <h4>{{ _("Online Course Completion") }}</h4>
   <table class="table table-bordered table-sm">
-    <thead><tr><th>Course</th><th>Learners</th><th>Avg Progress</th></tr></thead>
+    <thead><tr><th>{{ _("Course") }}</th><th>{{ _("Learners") }}</th><th>{{ _("Avg Progress") }}</th></tr></thead>
     <tbody>
       {% for c in data.course_completion %}
       <tr><td>{{ c.course_title or c.course }}</td><td>{{ c.learners }}</td>
           <td>{{ c.avg_progress }}%</td></tr>
-      {% else %}<tr><td colspan="3" class="text-muted">No course data</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="3" class="text-muted">{{ _("No course data") }}</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>

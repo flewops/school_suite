@@ -3,13 +3,13 @@
 ## First, understand what git has — and doesn't
 
 What you pushed to git is the **`school_suite` app only** (the custom code,
-fixtures, docs). To run the whole product you must also fetch the other apps and
+schema setup, tests, docs). To run the whole product you must also fetch the other apps and
 rebuild the bench. Nothing about the running system except `school_suite` lives in
 git:
 
 | Lives in your git repo | NOT in git — handled separately |
 |---|---|
-| `school_suite` app: code, hooks, fixtures (roles, custom fields, workflow, property setters), `docs/`, `deploy/` | Frappe + the 6 other apps (erpnext, payments, hrms, education, india_compliance, lms) — pulled from their own repos, pinned to **version-16** |
+| `school_suite` app: code, hooks, schema setup in `setup/install.py` (roles, custom fields, workflow, property setters, settings), tests, `docs/`, `deploy/` | Frappe + the 6 other apps (erpnext, payments, hrms, education, india_compliance, lms) — pulled from their own repos, pinned to **version-16** |
 | | The bench itself (`frappe-bench/`), Python venv, node_modules |
 | | **Your database and uploaded files** — moved with a **backup/restore**, not git |
 | | Site config / secrets (never commit these) |
@@ -173,5 +173,5 @@ school) and S3 backups/restore: **`deployment.md`**.
   (on your Mac's disk) survived but the MariaDB volume was reset, so the site's
   database is gone. Re-run `setup_local.sh`; it detects this and recreates the site.
 - **After restore, something's off** — always run `bench --site <site> migrate`
-  after a restore so schema + `school_suite` fixtures reconcile.
+  after a restore so the schema and `school_suite`'s setup reconcile.
 ```

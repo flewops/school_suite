@@ -1,14 +1,13 @@
 {% extends "templates/web.html" %}
-{% block title %}Parent Portal{% endblock %}
+{% block title %}{{ _("Parent Portal") }}{% endblock %}
 
 {% block page_content %}
 <div class="parent-portal" style="max-width:960px;margin:0 auto;">
-  <h1 style="margin-bottom:4px;">Parent Portal</h1>
-  <p class="text-muted">Signed in as {{ guardian_name }}</p>
+  <h1 style="margin-bottom:4px;">{{ _("Parent Portal") }}</h1>
+  <p class="text-muted">{{ _("Signed in as {0}").format(guardian_name) }}</p>
 
   {% if not children %}
-    <div class="alert alert-info">No children are linked to your account yet.
-      Please contact the school office.</div>
+    <div class="alert alert-info">{{ _("No children are linked to your account yet. Please contact the school office.") }}</div>
   {% endif %}
 
   {% for c in children %}
@@ -18,31 +17,30 @@
     <div class="row">
       <!-- Attendance -->
       <div class="col-sm-4">
-        <h5>Attendance</h5>
+        <h5>{{ _("Attendance") }}</h5>
         {% if c.attendance.percentage is not none %}
           <div style="font-size:28px;font-weight:600;">{{ c.attendance.percentage }}%</div>
           <small class="text-muted">
-            {{ c.attendance.present }} present / {{ c.attendance.absent }} absent
-            / {{ c.attendance.leave }} leave ({{ c.attendance.total }} days)
+            {{ _("{0} present / {1} absent / {2} leave ({3} days)").format(c.attendance.present, c.attendance.absent, c.attendance.leave, c.attendance.total) }}
           </small>
-        {% else %}<span class="text-muted">No attendance recorded</span>{% endif %}
+        {% else %}<span class="text-muted">{{ _("No attendance recorded") }}</span>{% endif %}
       </div>
 
       <!-- Fees -->
       <div class="col-sm-4">
-        <h5>Fees</h5>
-        <div>Billed: <b>{{ c.fees.billed }}</b></div>
-        <div>Paid: <b>{{ c.fees.paid }}</b></div>
-        <div>Outstanding:
+        <h5>{{ _("Fees") }}</h5>
+        <div>{{ _("Billed") }}: <b>{{ c.fees_fmt.billed }}</b></div>
+        <div>{{ _("Paid") }}: <b>{{ c.fees_fmt.paid }}</b></div>
+        <div>{{ _("Outstanding") }}:
           <b style="color:{{ 'var(--red-600,#dc2626)' if c.fees.outstanding else 'var(--green-600,#16a34a)' }};">
-            {{ c.fees.outstanding }}</b>
+            {{ c.fees_fmt.outstanding }}</b>
         </div>
-        <small class="text-muted">{{ c.fees.invoice_count }} receipt(s)</small>
+        <small class="text-muted">{{ _("{0} bill(s)").format(c.fees.invoice_count) }}</small>
       </div>
 
       <!-- LMS -->
       <div class="col-sm-4">
-        <h5>Online Learning</h5>
+        <h5>{{ _("Online Learning") }}</h5>
         {% if c.lms.enrollments %}
           {% for e in c.lms.enrollments %}
             <div style="margin-bottom:6px;">
@@ -50,21 +48,21 @@
               <div style="background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden;">
                 <div style="background:#2563eb;height:8px;width:{{ e.progress or 0 }}%;"></div>
               </div>
-              <small class="text-muted">{{ e.progress or 0 }}% complete</small>
+              <small class="text-muted">{{ _("{0}% complete").format(e.progress or 0) }}</small>
             </div>
           {% endfor %}
-        {% else %}<span class="text-muted">Not enrolled in any course</span>{% endif %}
+        {% else %}<span class="text-muted">{{ _("Not enrolled in any course") }}</span>{% endif %}
         {% if c.lms.certificates %}
-          <div style="margin-top:6px;"><b>{{ c.lms.certificates|length }}</b> certificate(s)</div>
+          <div style="margin-top:6px;">{{ _("{0} certificate(s)").format(c.lms.certificates|length) }}</div>
         {% endif %}
       </div>
     </div>
 
     <!-- Grades -->
-    <h5 style="margin-top:16px;">Recent Grades</h5>
+    <h5 style="margin-top:16px;">{{ _("Recent Grades") }} <a class="small" href="/report-card?student={{ c.name|urlencode }}">{{ _("Report card") }}</a></h5>
     {% if c.grades %}
       <table class="table table-bordered table-sm" style="margin-bottom:8px;">
-        <thead><tr><th>Course</th><th>Assessment</th><th>Score</th><th>Grade</th></tr></thead>
+        <thead><tr><th>{{ _("Course") }}</th><th>{{ _("Assessment") }}</th><th>{{ _("Score") }}</th><th>{{ _("Grade") }}</th></tr></thead>
         <tbody>
           {% for g in c.grades[:8] %}
           <tr><td>{{ g.course }}</td><td>{{ g.assessment_group }}</td>
@@ -72,22 +70,22 @@
           {% endfor %}
         </tbody>
       </table>
-    {% else %}<span class="text-muted">No grades published yet</span>{% endif %}
+    {% else %}<span class="text-muted">{{ _("No grades published yet") }}</span>{% endif %}
 
     <!-- Timetable -->
-    <h5 style="margin-top:16px;">Upcoming / Recent Timetable</h5>
+    <h5 style="margin-top:16px;">{{ _("Upcoming / Recent Timetable") }}</h5>
     {% if c.timetable %}
       <table class="table table-bordered table-sm">
-        <thead><tr><th>Date</th><th>Course</th><th>Time</th><th>Room</th><th>Teacher</th></tr></thead>
+        <thead><tr><th>{{ _("Date") }}</th><th>{{ _("Course") }}</th><th>{{ _("Time") }}</th><th>{{ _("Room") }}</th><th>{{ _("Teacher") }}</th></tr></thead>
         <tbody>
           {% for t in c.timetable[:8] %}
-          <tr><td>{{ t.schedule_date }}</td><td>{{ t.course }}</td>
-              <td>{{ t.from_time }}–{{ t.to_time }}</td><td>{{ t.room or '' }}</td>
+          <tr><td>{{ frappe.utils.formatdate(t.schedule_date) }}</td><td>{{ t.course }}</td>
+              <td>{{ t.time_label }}</td><td>{{ t.room_name or '' }}</td>
               <td>{{ t.instructor_name or '' }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
-    {% else %}<span class="text-muted">No scheduled classes</span>{% endif %}
+    {% else %}<span class="text-muted">{{ _("No scheduled classes") }}</span>{% endif %}
   </div>
   {% endfor %}
 </div>

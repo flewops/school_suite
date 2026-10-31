@@ -23,10 +23,18 @@ with its own row-level permissions.
   staff) + base read perms for the new roles.
 - **LMS batch ↔ Education class mapping** with student **auto-enrolment**.
 - **"Online mode" attendance** from live-class / LMS activity.
-- **India fee policy**: sibling discount, concession/scholarship, late fee.
-- **Board-configurable report card** compile + **UDISE** export placeholder.
-- **Pluggable SMS/WhatsApp/email** dispatch (dummy providers for the pilot).
-- A **Property Setter that fixes a real Education v16 bug** (`Fees.income_account`).
+- **India fee policy** on the native v16 billing (Fee Schedule → Sales Invoice) and
+  legacy Fees: auto sibling discount, concession, late fee, RTE 12(1)(c) warning.
+- **India / UDISE+ student fields** (APAAR, PEN, category, CWSN, RTE …), a UDISE+
+  export placeholder, and printable **report card** and **Transfer Certificate** pages.
+- **Teacher attendance + marks entry** for own classes; same-day **absence SMS**.
+- **SMS / email** through Frappe's own SMS Settings and Email Account (log-only until
+  configured); WhatsApp pluggable.
+- **School Suite Settings**: every policy value is editable by the school, not code.
+- A **School** tile on the apps screen that opens each role's starting page; parents
+  land on `/parent` after login.
+- Fixes for real Education v16 gaps: `Fees.income_account` fetch, Fees ignoring the
+  component discount, fee Items failing India Compliance's HSN/SAC check.
 
 See `docs/` for details: **`IMPLEMENTATION_GUIDE.md`** (the full click-by-click
 school setup, empty DB → go-live), `indian_specifics.md`, `online_mode.md`,
@@ -88,14 +96,32 @@ bench --site school.localhost execute school_suite.setup.flow_test.run   # full 
 
 `permissions.py` (row security) · `api.py` (dashboards) · `online_learning.py`
 (batches/online attendance) · `fees_policy.py` · `notify.py` · `reports.py`
-(report card + UDISE) · `www/parent.*`, `www/principal.*` (portals) · `setup/`
-(install, demo_data, flow_test) · `fixtures/` · `deploy/` (prod image build + CI).
+(report card, TC, UDISE) · `www/` (`/parent`, `/principal`, `/report-card`,
+`/transfer-certificate`) · `school_suite/doctype/school_suite_settings` · `setup/`
+(install, demo_data, flow_test) · `tests/` · `deploy/` (prod image build).
+
+## Engineering conventions
+
+- **Schema lives in code.** `setup/install.py` creates roles, custom fields, property
+  setters, settings defaults, the workflow and grading scale on install and every
+  migrate (idempotent). There are no fixtures. Custom fields and property setters
+  carry `module="School Suite"`, so `bench uninstall-app school_suite` removes them.
+  One-off data changes go in `patches.txt`.
+- **Policy values live in School Suite Settings**, not module constants.
+- **Native first.** Don't edit ERPNext / Education / LMS; extend through hooks.
+- **Whitelisted methods** check permissions server-side, carry type hints, and use
+  `methods=["POST"]` when they change data. User-facing strings use `_()`.
+- **Style:** `pre-commit run --all-files` (ruff lint + format, tabs).
+- **Tests:** `bench --site <test-site> set-config allow_tests true` then
+  `bench --site <test-site> run-tests --app school_suite`. CI (`.github/workflows/ci.yml`)
+  runs lint and the tests on every push / PR.
 
 ## Known gaps
 
 See `docs/GAP_LIST.md`. Headlines: real Zoom/Razorpay credentials, DPDP consent
-records, per-board report-card PDFs, real UDISE+ mapping, and folding `/parent`
-fully into the native edu-portal. Trust/society **fund accounting is an open
+records, guardian login by mobile OTP, 80C fee certificate, fee reminders / late-fee
+posting, transport, real UDISE+ mapping, and folding `/parent` fully into the native
+edu-portal. Trust/society **fund accounting is an open
 question for a CA — not assumed.**
 
 ## License
