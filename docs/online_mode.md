@@ -83,8 +83,8 @@ fall back to LMS activity, and **always let a teacher override** the derived mar
 
 - The Education **Fees** doc books a receivable against the student's Customer.
   (Note: a v16 Education bug — `Fees.income_account` fetched a dropped
-  `Fee Structure.income_account` field — is fixed by a Property Setter shipped in
-  `school_suite` fixtures.)
+  `Fee Structure.income_account` field — is fixed by a Property Setter that
+  `school_suite` creates on install / migrate.)
 - Setup ships a **Razorpay Settings** row with placeholder keys; saving it creates
   the "Razorpay" Payment Gateway record.
 

@@ -30,6 +30,14 @@
 - [ ] TLS everywhere; secrets in env/secret store, never in git (enforced in this
       repo — only dummy/placeholder creds are committed).
 
+## Sensitive student fields
+- [ ] School Suite adds optional **religion, social category, CWSN/disability and BPL**
+      fields (needed for UDISE+ / scholarships). Collect them only where required, and
+      restrict who can see them (permlevel) — not yet done; see gap list.
+- [x] **Aadhaar is not stored.** UDISE+ identity is covered by **PEN** and **APAAR
+      ID**. If a school must record Aadhaar, store only a masked / last-4 value and
+      get legal advice first (Aadhaar Act storage rules).
+
 ## Retention & minimisation
 - [ ] Defined **retention period** per data type (e.g. purge alumni PII after N
       years) and an automated purge job.

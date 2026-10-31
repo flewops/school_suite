@@ -1,0 +1,164 @@
+{
+ "actions": [],
+ "creation": "2026-10-31 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "fees_section",
+  "auto_apply_sibling_discount",
+  "sibling_discount_second",
+  "sibling_discount_third_onwards",
+  "column_break_fees",
+  "late_fee_per_day",
+  "late_fee_cap",
+  "default_fee_sac",
+  "academics_section",
+  "default_board",
+  "low_attendance_threshold",
+  "column_break_academics",
+  "require_student_email",
+  "notifications_section",
+  "absence_alert_enabled",
+  "absence_alert_channel",
+  "column_break_notifications",
+  "absence_alert_template"
+ ],
+ "fields": [
+  {
+   "fieldname": "fees_section",
+   "fieldtype": "Section Break",
+   "label": "Fees"
+  },
+  {
+   "default": "0",
+   "description": "Apply the sibling discount to new fee invoices (Sales Invoice from a Fee Schedule, or Fees) that carry no discount yet. RTE students are skipped.",
+   "fieldname": "auto_apply_sibling_discount",
+   "fieldtype": "Check",
+   "label": "Auto-apply Sibling Discount"
+  },
+  {
+   "default": "10",
+   "fieldname": "sibling_discount_second",
+   "fieldtype": "Percent",
+   "label": "Second Child Discount (%)"
+  },
+  {
+   "default": "15",
+   "fieldname": "sibling_discount_third_onwards",
+   "fieldtype": "Percent",
+   "label": "Third Child Onwards Discount (%)"
+  },
+  {
+   "fieldname": "column_break_fees",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "50",
+   "fieldname": "late_fee_per_day",
+   "fieldtype": "Currency",
+   "label": "Late Fee per Day",
+   "options": "INR"
+  },
+  {
+   "default": "1000",
+   "fieldname": "late_fee_cap",
+   "fieldtype": "Currency",
+   "label": "Late Fee Cap",
+   "options": "INR"
+  },
+  {
+   "default": "999220",
+   "description": "Filled on auto-created fee Items with no HSN/SAC. 999210 pre-primary, 999220 primary, 999231 secondary.",
+   "fieldname": "default_fee_sac",
+   "fieldtype": "Data",
+   "label": "Default SAC for Fee Items"
+  },
+  {
+   "fieldname": "academics_section",
+   "fieldtype": "Section Break",
+   "label": "Academics"
+  },
+  {
+   "default": "CBSE",
+   "fieldname": "default_board",
+   "fieldtype": "Select",
+   "label": "Default Board (Report Card)",
+   "options": "CBSE\nICSE\nState"
+  },
+  {
+   "default": "75",
+   "description": "Students below this are listed on the Principal dashboard. CBSE requires 75% to sit board exams.",
+   "fieldname": "low_attendance_threshold",
+   "fieldtype": "Percent",
+   "label": "Low Attendance Threshold (%)"
+  },
+  {
+   "fieldname": "column_break_academics",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Every Student needs an email for a portal / LMS login. Untick if young children have no email; they then get no login.",
+   "fieldname": "require_student_email",
+   "fieldtype": "Check",
+   "label": "Require Student Email"
+  },
+  {
+   "fieldname": "notifications_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "default": "1",
+   "description": "One message per child per day, only for today's attendance.",
+   "fieldname": "absence_alert_enabled",
+   "fieldtype": "Check",
+   "label": "Send Absence Alert to Guardians"
+  },
+  {
+   "default": "sms",
+   "depends_on": "absence_alert_enabled",
+   "fieldname": "absence_alert_channel",
+   "fieldtype": "Select",
+   "label": "Absence Alert Channel",
+   "options": "sms\nwhatsapp\nemail"
+  },
+  {
+   "fieldname": "column_break_notifications",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Dear Parent, {student_name} was marked absent today ({date}). Please contact the school if this is unexpected.",
+   "depends_on": "absence_alert_enabled",
+   "description": "Placeholders: {student_name}, {date}. Indian SMS must match a DLT-registered template word for word (TRAI).",
+   "fieldname": "absence_alert_template",
+   "fieldtype": "Small Text",
+   "label": "Absence Alert Text"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-31 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "School Suite",
+ "name": "School Suite Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,8 @@
+<div class="ss-actions no-print"><button class="btn btn-default btn-sm" onclick="window.print()">{{ _("Print") }}</button></div>
+<div class="ss-header">
+  {% if school.logo %}<img src="{{ school.logo }}" alt="">{% endif %}
+  <div>
+    <h1>{{ school.name or "" }}</h1>
+    {% if school.udise_code %}<small>{{ _("UDISE+ Code") }}: {{ school.udise_code }}</small>{% endif %}
+  </div>
+</div>

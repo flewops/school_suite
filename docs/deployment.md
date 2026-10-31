@@ -55,7 +55,7 @@ Pins: `FRAPPE_BRANCH=version-16`, `PYTHON_VERSION=3.14.10`, `NODE_VERSION=24.22.
 
 ## Operational notes
 
-- Run `bench --site <site> migrate` after every image upgrade (applies school_suite
-  fixtures + its `after_migrate` setup automatically).
+- Run `bench --site <site> migrate` after every image upgrade (re-applies school_suite's
+  schema and settings defaults through its `after_migrate` setup automatically).
 - Enable the scheduler in production (`bench --site <site> enable-scheduler`) so
   LMS live-class attendance, reminders, and backups run.

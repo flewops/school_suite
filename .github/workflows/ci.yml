@@ -1,0 +1,99 @@
+name: CI
+
+# Lint (the repo's pre-commit hooks) and the school_suite integration tests on a
+# fresh v16 site with every app the suite integrates with. Adapted from Frappe's
+# own app CI template; app branches mirror deploy/apps.json.
+
+on:
+  push:
+    branches: [version-16, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: pre-commit/action@v3.0.1
+
+  tests:
+    name: Server tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-client
+
+      - name: Init bench
+        run: |
+          pip install frappe-bench
+          bench init --frappe-branch version-16 --skip-redis-config-generation --skip-assets \
+            --python "$(which python)" ~/frappe-bench
+
+      - name: Get apps
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench get-app --skip-assets erpnext --branch version-16
+          bench get-app --skip-assets payments --branch version-16-hotfix
+          bench get-app --skip-assets hrms --branch version-16
+          bench get-app --skip-assets education --branch version-16
+          bench get-app --skip-assets https://github.com/resilient-tech/india-compliance --branch version-16
+          bench get-app --skip-assets https://github.com/frappe/lms --branch version-16
+          bench get-app --skip-assets school_suite "$GITHUB_WORKSPACE"
+          bench setup requirements --dev
+
+      - name: Create test site
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench new-site --db-root-password root --admin-password admin test_site
+          bench --site test_site install-app erpnext payments education hrms india_compliance lms school_suite
+          bench build --app frappe
+        env:
+          CI: "Yes"
+
+      - name: Run tests
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site test_site set-config allow_tests true
+          bench --site test_site run-tests --app school_suite
+        env:
+          TYPE: server

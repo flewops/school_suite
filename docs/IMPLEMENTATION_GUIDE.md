@@ -168,6 +168,9 @@ usually organised per term. You'll reuse the term on fee structures and assessme
 Courses and exams, because Courses and Assessments reference it. Make one per board
 scheme you use.
 
+🟢 School Suite already creates **`CBSE 9-Point`** (A1 ≥91 … D ≥33, E below 33;
+Classes IX–XII). Use it as-is if you follow CBSE, or create your own as below.
+
 1. **Name:** `CBSE Scholastic` (or your board's scheme).
 2. In the **Intervals** table, add one row per grade band. Each row:
    - **Threshold** = the *minimum %* for this grade (e.g. `91`)
@@ -287,6 +290,7 @@ Create the parent first so you can link the child to them.
 | **Guardians** (table) | add a row: pick the Guardian (5.1) + **Relation** (Mother/Father/…) | this is what powers "a parent sees only their own child" |
 | **User** | the student's login (optional now) | |
 | 🟢 **Online Mode** (checkbox) | tick only for students whose attendance comes from online activity (Part 7.2) | added by School Suite |
+| 🟢 **India / UDISE+ Details** (collapsible section) | Admission No. (General Register), APAAR ID, PEN, Social Category, Religion, Mother Tongue, CWSN + disability type, BPL, **Admitted under RTE 12(1)(c)**, Previous School + its TC No. | added by School Suite; all optional. Feeds the UDISE+ export and the Transfer Certificate (Part 12). Collect religion/caste/disability only if you need them for UDISE+ or scholarships |
 
 **Save.** The child is now linked to their parent(s).
 
@@ -362,9 +366,15 @@ active student into it (Part 8). Leave unticked for purely offline classes.
 the **date**, mark each child **Present / Absent / Leave**, and **Submit**. (You can
 also create a single **Student Attendance** record manually.)
 
+🟢 Teachers can do this themselves for **their own classes only** (the Teacher role
+can create and submit attendance and enter marks, but not publish results). When a
+child is marked **Absent**, their guardians get one SMS that day (see Part 13).
+Students below **75%** attendance (the CBSE board-exam bar) are listed on `/principal`.
+
 ### 7.2 🟢 Online-mode attendance (School Suite)
-For online/pandemic periods, tick **Online Mode** on the relevant students (5.2),
-then have the technical team run, per class per day:
+For online/pandemic periods, tick **Enable Online (LMS) Batch** on the class, or
+**Online Mode** on individual students (5.2). Students who are neither are skipped.
+Then the class teacher or School Admin runs, per class per day (no future dates):
 `school_suite.online_learning.mark_online_attendance("Grade 1 - A", "2026-07-15")`.
 Each student is marked **Present** if they joined the Zoom live class (when real Zoom
 credentials are configured) or, failing that, if they did any LMS activity that day;
@@ -411,7 +421,8 @@ the box. You assign them to each person's login.
 1. **Email** = the person's login, **First Name**, Save (an invite/temp password is
    set depending on your email config).
 2. On the User, open the **Roles** section and tick the right role(s):
-   - Parent → **Parent/Guardian** (their home becomes the `/parent` portal)
+   - Parent → **Parent/Guardian**. 🟢 Once the login is set on the Guardian record,
+     the parent lands on the `/parent` portal after signing in.
    - Teacher → **Teacher** (plus make sure their Employee→Instructor link exists, 4.3–4.4)
    - Student → **Student**
    - Office → **School Admin** / **Accountant**; head → **Principal**
@@ -438,8 +449,11 @@ Fee Category is backed by an ERPNext **Item**, and India Compliance requires an
 1. **Category Name** = `Tuition`. In **Item Defaults** add a row: **Company** =
    Greenfield School, **Income Account** = e.g. `Sales - GS`. **Save** — this creates
    a linked Item named `Tuition`.
-2. Open that **Item** (search `Tuition`) and set **HSN/SAC** to a valid 6/8-digit
-   code (education services ≈ `999293`). Save.
+2. 🟢 School Suite fills the Item's **HSN/SAC** with `999220` (primary education)
+   so the save doesn't fail. Open the **Item** (search `Tuition`) and change it if
+   needed: `999210` pre-primary, `999220` primary, `999231` secondary. Do **not** use
+   `999293`; that is commercial coaching, which is taxable. Set the right code for
+   non-tuition fees such as transport.
 3. Repeat for `Transport`, `Exam`, etc.
 
 ### 10.2 Fee Structure (one per class × term)  *(…→ Fee Structure → + New)*
@@ -456,25 +470,36 @@ Term* is what gives you **term-wise fees**.
 
 **Save → Submit.** Repeat per class and per term.
 
-### 10.3 Raise and collect a fee  *(…→ Fees → + New)*
+### 10.3 Raise fees for a class  *(…→ Fee Schedule → + New)*
+This is the standard Education v16 way. A **Fee Schedule** takes a Fee Structure and
+one or more Student Groups and creates **one Sales Invoice per student** (or a Sales
+Order, if *Create Sales Order* is ticked in Education Settings). The invoice carries
+the **Student**, shows in the parent portals, and is paid like any ERPNext invoice
+(Payment Entry, or a Razorpay Payment Request, 10.5). GST and receivables reports
+work on it natively.
+
 | Field | Enter |
 |---|---|
-| Student \* | the child |
-| Program Enrollment | their enrollment (6.1) |
-| Fee Structure | the one from 10.2 (components auto-fill) |
-| Posting Date / Due Date | today / the deadline |
+| Fee Structure | the one from 10.2 |
+| Due Date / Posting Date | the deadline / today |
+| Student Groups (table) | the classes to bill |
 
-**Save → Submit.** The receipt number is sequential (`EDU-FEE-2026-#####`). The
-balance shows as **Outstanding Amount** until paid.
+**Save → Submit → Create Fees.** Single ad-hoc fees can also be raised directly as a
+Sales Invoice with the **Student** field set. (The older **Fees** document still
+works and is counted too, but new schools should use Fee Schedules.)
 
-### 10.4 🟢 Indian fee policies (School Suite) — applied *before* submitting a fee
-The technical team can call these from a button/script or the console:
-- **Sibling discount:** `fees_policy.apply_sibling_discount(fee)` — automatically
-  gives a % off based on birth order among siblings who share a guardian (e.g. 2nd
-  child 10%, 3rd 15%). Verified: a 3rd child's ₹5000 fee becomes ₹4250.
-- **Scholarship/concession:** `fees_policy.apply_concession(fee, percent, reason)`.
-- **Late fee:** `fees_policy.late_fee_amount(fee_name)` computes the overdue charge
-  (per-day, capped).
+### 10.4 🟢 Indian fee policies (School Suite)
+Set these in **School Suite Settings** (search the awesome bar); no code changes:
+- **Sibling discount:** tick *Auto-apply Sibling Discount* and set the 2nd-child and
+  3rd-child-onwards %. Every new fee invoice for a younger sibling (birth order among
+  enrolled children sharing a guardian) then gets that % off automatically. Invoices
+  that already carry a discount, and RTE seats, are left alone.
+- **Scholarship/concession:** give a % discount on the Fee Structure component, or on
+  the invoice line. (Developers: `fees_policy.apply_concession(bill, percent, reason)`.)
+- **Late fee:** set *Late Fee per Day* and *Late Fee Cap*.
+  `fees_policy.late_fee_amount(invoice)` computes the charge; posting it automatically
+  is still to build (GAP_LIST).
+- **Default SAC** for fee Items, and the **75%** low-attendance bar, are here too.
 
 ### 10.5 Online payment (Razorpay)
 **The school provides** its own Razorpay keys. Enter the **`rzp_test_`** (test) or
@@ -497,11 +522,11 @@ Scale (3.1). **Submit.** (Use the Assessment Result Tool to enter a whole group 
 once.)
 
 ### 11.3 🟢 Report card (School Suite, board-configurable)
-School Suite compiles report cards from Assessment Results via
-`reports.get_report_card(student, academic_term, board)`. The board format
-(**CBSE / State / ICSE**) is configurable — the technical team sets `DEFAULT_BOARD`
-or passes a `board`. For printable PDFs per board, create a **Print Format** (listed
-in `GAP_LIST.md`).
+Open **`/report-card?student=<Student ID>`** (optionally `&academic_term=Term 1`) for
+a print-ready report card from the submitted Assessment Results. Print it from the
+browser (or *Save as PDF*). Parents reach it from `/parent`; a parent can only open
+their own child's. The layout follows the **Default Board** in School Suite Settings
+(**CBSE / ICSE / State**), or `&board=State` in the link.
 
 ---
 
@@ -509,10 +534,25 @@ in `GAP_LIST.md`).
 
 - **GST:** `India Compliance → GST Settings` — set the school's GSTIN and defaults if
   registered. HSN/SAC codes ship with the app; put them on fee Items (10.1).
-- **UDISE+:** 🟢 `reports.udise_export()` returns a **placeholder** aggregate
-  (enrolment by gender, staff, classes). It is **not** the official UDISE+ format —
-  the technical team must map it to the government schema with your DISE code before
-  any real submission.
+- **GST on fees:** school education up to higher secondary is exempt from GST; mark
+  tuition fee Items as exempt / nil-rated so no tax is charged. Confirm item-by-item
+  (transport, uniforms, books) with your CA.
+- **UDISE+ code:** 🟢 set **UDISE+ School Code** on the Company.
+- **UDISE+:** 🟢 `reports.udise_export()` returns a **placeholder** aggregate:
+  enrolment by class × gender, by social category, CWSN, RTE and BPL counts, plus
+  `data_gaps` listing students missing PEN / APAAR / category / DOB. It is **not** the
+  official UDISE+ format; the technical team must map it to the government schema
+  before any real submission.
+- **Transfer Certificate:** 🟢 fill **Date of Leaving**, **Leaving Certificate
+  Number** and **Reason for Leaving** on the Student, then open
+  **`/transfer-certificate?student=<Student ID>`** and print it (Principal / School
+  Admin only). It compiles admission no., PEN/APAAR,
+  parents, DOB in figures and words, last class and subjects, attendance and dues,
+  and lists anything still missing. Conduct and promotion are left for the office to
+  fill. For Classes I–VIII the RTE Act s.5(3) requires the TC to be issued
+  immediately; don't withhold it over fee dues without legal advice.
+- **RTE 12(1)(c) seats:** 🟢 saving a Fees record for a student flagged *Admitted
+  under RTE* shows a warning; those fees are reimbursed by the State.
 
 ---
 
@@ -525,16 +565,29 @@ in `GAP_LIST.md`).
   providers** (they only log, no credentials) for the pilot. To go live, the
   technical team replaces the provider for a channel with a real vendor (MSG91,
   Gupshup, Twilio, Meta WhatsApp) and uses
-  `notify.send(channel, to, message)` or `notify.notify_guardians(student, msg, channel)`.
+  `notify.send(channel, to, message)` or `notify.notify_guardians(student, msg, channel)`
+  from server code (these are deliberately not callable from the browser).
+- 🟢 **Absence alert:** when a child is marked Absent, guardians get one SMS for that
+  day. Indian SMS must match a **DLT-registered template** (TRAI rules), so register
+  the *Absence Alert Text* in **School Suite Settings** with your operator, or change
+  it to the registered wording. The same page switches alerts off or changes channel.
+- 🟢 **Going live with SMS:** fill Frappe's **SMS Settings** (your gateway URL, sender
+  ID and, for DLT, the template / entity ID as static parameters). School Suite uses
+  it automatically; until then SMS is only logged. Email uses the outgoing **Email
+  Account**.
 
 ---
 
 ## Part 14 — The portals and dashboards (the payoff)
 
+- **School tile (apps screen):** 🟢 shown to staff and parents; it opens the right
+  starting page for the role: parent → `/parent`, principal/admin → `/principal`,
+  teacher → Student Attendance Tool, accountant → Fee Schedules.
 - **Parent Portal — `/parent`:** a signed-in parent sees, **per child**, attendance %,
   fee dues & receipts, grades, timetable, and **online-course progress** — Education
   and LMS data combined on one page. 🟢 School Suite; shows only their own children.
-- **Principal Dashboard — `/principal`:** class-wise attendance, fee collection, and
+- **Principal Dashboard — `/principal`:** class-wise attendance for the current
+  academic year, students below 75% attendance, fee collection (in ₹), and
   online-course completion. 🟢 School Suite; Principal / School Admin only.
 - **Student / Guardian portal (native):** `edu-portal`.
 
@@ -548,8 +601,9 @@ in `GAP_LIST.md`).
 | Raise a term's fees | Education → Fee Management → Fees (from the Fee Structure) |
 | Record a payment | the Fee / Payment Entry / Razorpay checkout |
 | Enter exam marks | Education → Assessment → Assessment Result |
-| Publish a report card | run the report-card compile for the student/term |
+| Publish a report card | `/report-card?student=<ID>` → Print |
 | Add a new admission | Program Enrollment → Apply for Approval → Principal approves |
+| Issue a Transfer Certificate | fill leaving fields on the Student, then `/transfer-certificate?student=<ID>` → Print |
 | Message parents | Notification (email) / `notify.*` (SMS/WhatsApp) |
 | Check the school at a glance | `/principal` |
 
@@ -574,6 +628,25 @@ in `GAP_LIST.md`).
 - [ ] Backups scheduled to S3 **and a restore test done** (`deployment.md`).
 - [ ] Data-protection checklist reviewed by legal (`data_protection.md`).
 - [ ] `developer_mode` off in production.
+
+**Found in the browser walkthrough (UAT) — check these too:**
+- [ ] **Education Settings → Current Academic Year** is set. Without it new
+      enrollments don't default the year and `/principal` shows all-time attendance.
+- [ ] Every class (Student Group) has the **same "Group Based On"** (normally
+      *Batch*). The Student Attendance Tool lists only groups of the type picked.
+- [ ] Use **one fee path**: Fee Schedule → Sales Invoices. Raising legacy *Fees* for the
+      same term bills the child twice (both are counted on `/parent`).
+- [ ] Check the **due date** on each Fee Schedule: the *Annually* plan defaults it to a
+      year from today, past the academic year end.
+- [ ] Ad-hoc fee invoices: always fill **Student** (Student Info section). Choosing the
+      customer doesn't fill it, and without it the invoice is missing from `/parent`.
+- [ ] Attendance corrections: re-running the Student Attendance Tool for a day already
+      marked fails with *Duplicate Entry* (Education behaviour). Edit or cancel that
+      student's Student Attendance record instead.
+- [ ] After issuing a TC, untick **Enabled** on the Student so they stop counting in
+      enrolment, UDISE+ and sibling discounts.
+- [ ] Staff and parents start from the **School** tile on the apps screen (Education's
+      own tile shows only to Education Manager).
 
 ---
 
