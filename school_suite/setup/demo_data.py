@@ -255,6 +255,9 @@ def _lms(students):
 				"description": "Demo course",
 				"published": 1,
 				"status": "Approved",
+				# mandatory in LMS v2.63.0 (the pinned release), checked before LMS's
+				# own validate would default it to the owner
+				"instructors": [{"instructor": _email("teacher_sunita")}],
 			}
 		)
 		c.insert(ignore_permissions=True)
