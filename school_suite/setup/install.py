@@ -49,7 +49,21 @@ ROLE_READ_PERMS = {
 		"Program Enrollment",
 		"Course Enrollment",
 	],
-	"Accountant": ["Fees", "Student", "Program Enrollment"],
+	# Accounts User carries no Education permissions: these are the records a fee
+	# schedule links to (and Student / Program Enrollment to see who is billed).
+	"Accountant": [
+		"Fees",
+		"Student",
+		"Program Enrollment",
+		"Student Group",
+		"Program",
+		"Academic Year",
+		"Academic Term",
+		"Student Category",
+		"Student Batch Name",
+		# the Fee Schedule form reads it to choose "Create Sales Invoice / Order"
+		"Education Settings",
+	],
 }
 
 # Rights on top of read. Row-level hooks still limit a teacher to their own classes.
@@ -92,6 +106,20 @@ ROLES = [
 	"Parent/Guardian",
 	"Principal",
 ]
+
+# A School Suite role on its own only gates rows, the workflow and our pages; the
+# native role beside it carries the doctype permissions the job needs (and every
+# master it links to). Give staff users the Role Profile, not just the role.
+ROLE_PROFILES = {
+	# admissions, students, guardians, classes; Education app tile
+	"School Admin": ["School Admin", "Academics User", "Education Manager"],
+	# approve admissions (submit Program Enrollment), see everything
+	"Principal": ["Principal", "Academics User", "Education Manager"],
+	# Fee Schedules, Sales Invoices, Payment Entries
+	"Accountant": ["Accountant", "Accounts User"],
+	"Teacher": ["Teacher"],
+	"Parent/Guardian": ["Parent/Guardian"],
+}
 
 CUSTOM_FIELDS = {
 	# Per-student "online mode" toggle: attendance may be derived from
@@ -453,8 +481,28 @@ def after_install():
 	run()
 
 
+def create_role_profiles():
+	"""Create the staff Role Profiles, and add any role a profile is missing (a
+	school may add roles to a profile; they are kept)."""
+	for profile, roles in ROLE_PROFILES.items():
+		roles = [r for r in roles if frappe.db.exists("Role", r)]
+		if not frappe.db.exists("Role Profile", profile):
+			doc = frappe.new_doc("Role Profile")
+			doc.role_profile = profile
+		else:
+			doc = frappe.get_doc("Role Profile", profile)
+		have = {r.role for r in doc.roles}
+		missing = [r for r in roles if r not in have]
+		if not missing and not doc.is_new():
+			continue
+		for role in missing:
+			doc.append("roles", {"role": role})
+		doc.save(ignore_permissions=True)
+
+
 def run():
 	create_roles()
+	create_role_profiles()
 	create_custom_field_records()
 	ensure_defaults()
 	create_property_setters()

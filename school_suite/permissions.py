@@ -17,6 +17,10 @@ query. All interpolated values are escaped with frappe.db.escape. Staff roles
 import frappe
 
 FULL_ACCESS_ROLES = {"System Manager", "Administrator", "School Admin", "Principal"}
+# Office roles that bill every student, so they see all students, classes and
+# enrolments (to raise fees) but not marks or attendance.
+BILLING_ROLES = {"Accountant"}
+BILLING_DOCTYPES = {"Fees", "Program Enrollment"}
 
 
 # --------------------------------------------------------------------------- #
@@ -93,7 +97,7 @@ def student_query(user=None):
 	"""
 	user = user or frappe.session.user
 	roles = _roles(user)
-	if roles & FULL_ACCESS_ROLES:
+	if roles & (FULL_ACCESS_ROLES | BILLING_ROLES):
 		return ""
 	clauses = []
 	if "Teacher" in roles:
@@ -110,7 +114,7 @@ def student_query(user=None):
 def student_group_query(user=None):
 	user = user or frappe.session.user
 	roles = _roles(user)
-	if roles & FULL_ACCESS_ROLES:
+	if roles & (FULL_ACCESS_ROLES | BILLING_ROLES):
 		return ""
 	clauses = []
 	if "Teacher" in roles:
@@ -157,7 +161,10 @@ def assessment_result_query(user=None):
 
 
 def program_enrollment_query(user=None):
-	return _by_student_field("Program Enrollment", user or frappe.session.user)
+	user = user or frappe.session.user
+	if _roles(user) & BILLING_ROLES:
+		return ""
+	return _by_student_field("Program Enrollment", user)
 
 
 def course_enrollment_query(user=None):
@@ -267,7 +274,7 @@ def student_group_has_permission(doc, ptype=None, user=None):
 	"""Single-document guard for Student Group (list filtering alone does not stop
 	a teacher opening another class's roster by URL)."""
 	user = user or frappe.session.user
-	if _roles(user) & FULL_ACCESS_ROLES:
+	if _roles(user) & (FULL_ACCESS_ROLES | BILLING_ROLES):
 		return True
 	name = doc if isinstance(doc, str) else doc.name
 	return name in _allowed_groups(user)
@@ -285,7 +292,7 @@ def course_schedule_has_permission(doc, ptype=None, user=None):
 
 def student_has_permission(doc, ptype=None, user=None):
 	user = user or frappe.session.user
-	if _roles(user) & FULL_ACCESS_ROLES:
+	if _roles(user) & (FULL_ACCESS_ROLES | BILLING_ROLES):
 		return True
 	name = doc if isinstance(doc, str) else doc.name
 	return name in _allowed_students(user)
@@ -297,7 +304,7 @@ def student_record_has_permission(doc, ptype=None, user=None):
 	roles = _roles(user)
 	if roles & FULL_ACCESS_ROLES:
 		return True
-	if "Accountant" in roles and getattr(doc, "doctype", None) == "Fees":
+	if roles & BILLING_ROLES and getattr(doc, "doctype", None) in BILLING_DOCTYPES:
 		return True
 	student = getattr(doc, "student", None)
 	if student is None:

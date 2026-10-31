@@ -23,6 +23,9 @@ TEACHER = "teacher_sunita@demo.school"  # teaches Class 1A (Arya, Bodhi)
 GUARDIAN_MEERA = "guardian_meera@demo.school"  # Arya + Bodhi
 GUARDIAN_RAVI = "guardian_ravi@demo.school"  # Chetan (Class 1B)
 STUDENT_ARYA = "arya@demo.school"
+SCHOOL_ADMIN = "school_admin@demo.school"
+PRINCIPAL = "principal@demo.school"
+ACCOUNTANT = "accountant@demo.school"
 
 
 def student(first_name):
@@ -119,6 +122,46 @@ class TestSchoolSuite(IntegrationTestCase):
 		schedule_1a = frappe._dict(student_group="Class 1A", instructor=None)
 		self.assertTrue(permissions.course_schedule_has_permission(schedule_1a, user=GUARDIAN_MEERA))
 		self.assertFalse(permissions.course_schedule_has_permission(schedule_1a, user=GUARDIAN_RAVI))
+
+	def test_staff_role_profiles_give_working_access(self):
+		self.assertTrue({"School Admin", "Academics User"} <= set(frappe.get_roles(SCHOOL_ADMIN)))
+		for doctype in ("Student", "Guardian", "Program Enrollment", "Student Group"):
+			self.assertTrue(frappe.has_permission(doctype, "create", user=SCHOOL_ADMIN), doctype)
+		self.assertTrue(frappe.has_permission("Program Enrollment", "submit", user=PRINCIPAL))
+		for doctype, ptype in (
+			("Fee Schedule", "create"),
+			("Sales Invoice", "submit"),
+			("Payment Entry", "submit"),
+			("Student Group", "read"),
+			("Education Settings", "read"),
+		):
+			self.assertTrue(frappe.has_permission(doctype, ptype, user=ACCOUNTANT), doctype)
+		# the accountant bills every class but sees no marks and no child dashboard
+		self.assertFalse(frappe.has_permission("Assessment Result", "read", user=ACCOUNTANT))
+		frappe.set_user(ACCOUNTANT)
+		self.assertEqual(sorted(frappe.get_list("Student Group", pluck="name")), ["Class 1A", "Class 1B"])
+		self.assertIn("Chetan", frappe.get_list("Student", pluck="first_name"))
+		self.assertRaises(frappe.PermissionError, api.get_student_dashboard, student("Arya"))
+
+	def test_admission_workflow_with_real_staff_logins(self):
+		from frappe.model.workflow import apply_workflow
+
+		frappe.set_user(SCHOOL_ADMIN)
+		pe = frappe.get_doc(
+			{
+				"doctype": "Program Enrollment",
+				"student": student("Chetan"),
+				"program": "Grade 5",
+				"academic_year": demo_data.academic_year_name(),
+				"enrollment_date": nowdate(),
+			}
+		).insert()
+		pe = apply_workflow(pe, "Apply for Approval")
+		self.assertEqual(pe.workflow_state, "Pending Principal Approval")
+		self.assertRaises(frappe.ValidationError, apply_workflow, pe, "Approve")  # not the admin's call
+		frappe.set_user(PRINCIPAL)
+		pe = apply_workflow(frappe.get_doc("Program Enrollment", pe.name), "Approve")
+		self.assertEqual((pe.workflow_state, pe.docstatus), ("Enrolled", 1))
 
 	def test_list_queries_are_row_restricted(self):
 		frappe.set_user(GUARDIAN_MEERA)

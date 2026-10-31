@@ -26,8 +26,7 @@ def _assert_can_view_student(student):
 	user = frappe.session.user
 	if _roles(user) & FULL_ACCESS_ROLES:
 		return
-	if "Accountant" in _roles(user):
-		return
+	# Accountants bill from the desk; they don't need a child's grades or attendance.
 	if student not in _allowed_students(user):
 		frappe.throw(_("You are not permitted to view this student."), frappe.PermissionError)
 

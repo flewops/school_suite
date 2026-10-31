@@ -413,19 +413,30 @@ Full details and limits: `online_mode.md`.
 
 ## Part 9 — Logins, roles and access (School Suite)
 
-### 9.1 The six roles (already installed)
+### 9.1 The roles and Role Profiles (already installed)
 `School Admin, Accountant, Teacher, Student, Parent/Guardian, Principal` exist out of
-the box. You assign them to each person's login.
+the box. 🟢 For staff, assign the **Role Profile** of the same name, not just the
+role: a School Suite role on its own only controls *which rows* someone sees and the
+admission workflow. The profile adds the standard role that carries the actual
+permissions:
+
+| Role Profile | Roles it gives | Can |
+|---|---|---|
+| School Admin | School Admin + Academics User + Education Manager | students, guardians, classes, admissions (Apply for Approval) |
+| Principal | Principal + Academics User + Education Manager | approve admissions, see everything, `/principal` |
+| Accountant | Accountant + Accounts User | fee schedules, invoices, payments; sees all students and classes but no marks |
+| Teacher | Teacher | own classes: attendance, marks entry |
+| Parent/Guardian | Parent/Guardian | `/parent` for own children |
 
 ### 9.2 Create a login and assign a role  *(Settings → Users → User → + New)*
 1. **Email** = the person's login, **First Name**, Save (an invite/temp password is
    set depending on your email config).
-2. On the User, open the **Roles** section and tick the right role(s):
+2. On the User, set **Role Profiles** (staff) or tick the role (parents, students):
    - Parent → **Parent/Guardian**. 🟢 Once the login is set on the Guardian record,
      the parent lands on the `/parent` portal after signing in.
    - Teacher → **Teacher** (plus make sure their Employee→Instructor link exists, 4.3–4.4)
    - Student → **Student**
-   - Office → **School Admin** / **Accountant**; head → **Principal**
+   - Office → Role Profile **School Admin** / **Accountant**; head → **Principal**
 3. Link the login back to the person: set this email as the **User** on the Guardian
    (5.1) or Student (5.2), or as **User ID** on the Employee (4.3).
 
@@ -434,7 +445,9 @@ the box. You assign them to each person's login.
 - a **parent** sees only their own children,
 - a **teacher** sees only students in their assigned Student Groups,
 - a **student** sees only themselves,
-- **Principal / School Admin** see everything.
+- **Principal / School Admin** see everything,
+- an **accountant** sees every student, class and enrolment (to bill them) but no
+  marks, attendance or child dashboards.
 To verify: log in as a parent and open the Student list — you should see only their
 child. (These rules were tested and confirmed during the build.)
 

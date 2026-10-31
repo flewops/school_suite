@@ -1,12 +1,18 @@
 name: CI
 
-# Lint (the repo's pre-commit hooks) and the school_suite integration tests on a
-# fresh v16 site with every app the suite integrates with. Adapted from Frappe's
-# own app CI template; app branches mirror deploy/apps.json.
+# lint  -> the repo's pre-commit hooks
+# tests -> school_suite's integration tests on a fresh site, with every app at the
+#          exact versions pinned for the image (deploy/versions.env + deploy/apps.json)
+# image -> only on main or a v* tag, and only after lint and tests pass: build the
+#          production image, push it to GHCR and check every app is inside it
+#
+# Image tags: v16-<commit> (never moves; deploy and roll back by this),
+#             v16 (newest main build), and the git tag for releases.
 
 on:
   push:
     branches: [version-16, main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -50,13 +56,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Load pinned versions
+        run: grep -E '^[A-Z_]+=' deploy/versions.env >> "$GITHUB_ENV"
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install MariaDB client
         run: |
@@ -66,18 +75,21 @@ jobs:
       - name: Init bench
         run: |
           pip install frappe-bench
-          bench init --frappe-branch version-16 --skip-redis-config-generation --skip-assets \
+          bench init --frappe-branch "$FRAPPE_BRANCH" --skip-redis-config-generation --skip-assets \
             --python "$(which python)" ~/frappe-bench
 
-      - name: Get apps
+      - name: Get apps (pinned, as in the image)
         working-directory: /home/runner/frappe-bench
         run: |
-          bench get-app --skip-assets erpnext --branch version-16
-          bench get-app --skip-assets payments --branch version-16-hotfix
-          bench get-app --skip-assets hrms --branch version-16
-          bench get-app --skip-assets education --branch version-16
-          bench get-app --skip-assets https://github.com/resilient-tech/india-compliance --branch version-16
-          bench get-app --skip-assets https://github.com/frappe/lms --branch version-16
+          python3 - "$GITHUB_WORKSPACE/deploy/apps.json" > /tmp/apps.txt <<'EOF'
+          import json, sys
+          for app in json.load(open(sys.argv[1])):
+              if not app["url"].rstrip("/").endswith("/school_suite"):
+                  print(app["url"], app["branch"])
+          EOF
+          while read -r url ref; do
+            bench get-app --skip-assets --branch "$ref" "$url"
+          done < /tmp/apps.txt
           bench get-app --skip-assets school_suite "$GITHUB_WORKSPACE"
           bench setup requirements --dev
 
@@ -97,3 +109,84 @@ jobs:
           bench --site test_site run-tests --app school_suite
         env:
           TYPE: server
+
+  image:
+    name: Build & push image
+    needs: [lint, tests]
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout school_suite
+        uses: actions/checkout@v4
+        with:
+          path: school_suite
+
+      - name: Load pinned versions
+        run: grep -E '^[A-Z_]+=' school_suite/deploy/versions.env >> "$GITHUB_ENV"
+
+      - name: Checkout frappe_docker (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: frappe/frappe_docker
+          ref: ${{ env.FRAPPE_DOCKER_REF }}
+          path: frappe_docker
+
+      # school_suite comes from GitHub at the ref that triggered this run
+      - name: apps.json for this ref
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          apps = json.load(open("school_suite/deploy/apps.json"))
+          for app in apps:
+              if app["url"].rstrip("/").endswith("/school_suite"):
+                  app["branch"] = os.environ["GITHUB_REF_NAME"]
+          json.dump(apps, open("apps.json", "w"), indent=1)
+          EOF
+          cat apps.json
+
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/school-erp
+          tags: |
+            type=sha,prefix=v16-,format=short
+            type=raw,value=v16,enable={{is_default_branch}}
+            type=ref,event=tag
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: frappe_docker
+          file: frappe_docker/images/custom/Containerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            FRAPPE_PATH=https://github.com/frappe/frappe
+            FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }}
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            NODE_VERSION=${{ env.NODE_VERSION }}
+          secret-files: |
+            apps_json=apps.json
+
+      - name: Smoke test — every app is in the image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/school-erp:v16-${GITHUB_SHA::7}"
+          docker run --rm "$IMAGE" bash -c 'ls apps' | tee apps.txt
+          for app in frappe erpnext payments hrms education india_compliance lms school_suite; do
+            grep -qx "$app" apps.txt || { echo "::error::$app missing from $IMAGE"; exit 1; }
+          done

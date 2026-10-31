@@ -140,7 +140,7 @@ image** instead (it bakes in all apps + `school_suite`). This repo ships the fil
 
 - `deploy/apps.json` — all apps pinned to v16. **Edit the last line** to your
   `school_suite` git URL.
-- `deploy/build.sh` — builds the image from frappe_docker's layered Containerfile.
+- `deploy/build.sh` — builds the image from frappe_docker's custom Containerfile, with the versions pinned in `deploy/versions.env` and `deploy/apps.json`.
 - `.github/workflows/build-image.yml` — the same build in CI, pushing to GHCR.
 
 ```bash

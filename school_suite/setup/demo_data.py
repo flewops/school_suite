@@ -22,6 +22,13 @@ GUARDIANS = {
 	"guardian_meera": "Meera Nair",
 	"guardian_ravi": "Ravi Kumar",
 }
+# Office staff logins, each created through its Role Profile (setup/install.py):
+# key -> (full name, Role Profile)
+STAFF = {
+	"school_admin": ("Anita Desai", "School Admin"),
+	"principal": ("Rajesh Iyer", "Principal"),
+	"accountant": ("Kavya Menon", "Accountant"),
+}
 # Relation is printed on the Transfer Certificate (Father's / Mother's name).
 GUARDIAN_RELATION = {"guardian_meera": "Mother", "guardian_ravi": "Father"}
 
@@ -49,6 +56,23 @@ def _user(email, full_name, roles):
 		if r not in existing:
 			u.append("roles", {"role": r})
 	u.save(ignore_permissions=True)
+	return email
+
+
+def _staff(key):
+	full_name, profile = STAFF[key]
+	email = _email(key)
+	if not frappe.db.exists("User", email):
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": full_name,
+				"send_welcome_email": 0,
+				"new_password": TEST_PASSWORD,
+				"role_profiles": [{"role_profile": profile}],
+			}
+		).insert(ignore_permissions=True)
 	return email
 
 
@@ -275,6 +299,7 @@ def run():
 	ay, prog, _course = _academic()
 	students = {k: _student(k, ay, prog) for k in STUDENTS}
 	teacher = _teacher(company)
+	staff = {key: _staff(key) for key in STAFF}
 
 	# Group 1A: Arya + Bodhi, taught by Sunita.  Group 1B: Chetan, no teacher.
 	g1 = _group("Class 1A", ay, prog, [students["arya"], students["bodhi"]], teacher)
@@ -298,6 +323,7 @@ def run():
 			"parent_ravi": _email("guardian_ravi"),
 			"teacher": _email("teacher_sunita"),
 			"student_arya": _email("arya"),
+			**staff,
 			"password": TEST_PASSWORD,
 		},
 	}

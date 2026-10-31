@@ -114,7 +114,12 @@ bench --site school.localhost execute school_suite.setup.flow_test.run   # full 
 - **Style:** `pre-commit run --all-files` (ruff lint + format, tabs).
 - **Tests:** `bench --site <test-site> set-config allow_tests true` then
   `bench --site <test-site> run-tests --app school_suite`. CI (`.github/workflows/ci.yml`)
-  runs lint and the tests on every push / PR.
+  runs lint and the tests (against the pinned versions) on every push and PR, and on
+  `main` builds the production image only after they pass.
+- **Releases:** versions are pinned in `deploy/versions.env` and `deploy/apps.json`;
+  images are tagged `v16-<commit>` (immutable) and `v16`. See `docs/deployment.md`.
+- **Staff logins get a Role Profile** (School Admin, Principal, Accountant, Teacher),
+  which adds the native roles that carry the permissions.
 
 ## Known gaps
 

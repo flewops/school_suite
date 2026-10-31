@@ -28,7 +28,10 @@ for one mid-level Frappe developer, excluding the school's own content/config.
 | Admission→fee→timetable→quiz→report full flow | 10/10 steps verified |
 | Schema in code (no fixtures), module-tagged for clean uninstall; upgrade from the fixtures version tested | `setup/install.py` |
 | 21 integration tests + CI (pre-commit lint, server tests) | `bench run-tests --app school_suite` |
-| Pinned prod image build + CI + backup/restore + data-protection + deployment docs | files shipped |
+| Production image: every app pinned to a release, built only after tests pass, tagged `v16-<commit>`, smoke-tested | CI `image` job on `main` |
+| Upgrade path: backup + `bench migrate` on redeploy, stable DB password, pull new image | `deploy/run_production.sh` |
+| Staff Role Profiles (School Admin, Principal, Accountant, Teacher, Parent) | tested with real logins |
+| Backup/restore, data-protection and deployment docs | files shipped |
 
 ## 🔨 BUILD (remaining gaps, worth doing in-house)
 | Gap | Why build | Est. (days) |

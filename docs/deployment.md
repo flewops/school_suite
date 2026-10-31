@@ -1,23 +1,61 @@
 # Phase 6 — Deployment Readiness
 
-## Pinned production image
+## Production image: pinned, tested, tagged per commit
 
-`deploy/apps.json` pins every app to its v16 branch (verified in the pilot).
-`deploy/build.sh` builds a single image from frappe_docker's layered Containerfile;
-`.github/workflows/build-image.yml` does the same in CI and pushes to GHCR.
+**What's in it** is pinned in two files, used by CI and both scripts alike:
+
+- `deploy/versions.env` — Frappe `v16.54.0`, Python `3.14.10`, Node `24.22.2`, and the
+  frappe_docker commit whose `images/custom/Containerfile` builds the image.
+- `deploy/apps.json` — each app at a **release tag**: ERPNext `v16.53.0`, HRMS
+  `v16.53.0`, Education `v16.0.1`, India Compliance `v16.11.0`, LMS `v2.63.0`.
+  Payments publishes no releases, so it stays on `version-16-hotfix`. bench clones
+  with `git clone --branch`, which takes a branch or tag, not a commit.
+
+To change a version, edit the pin, push to `version-16`, and let CI run the tests
+against it before it reaches `main`.
+
+**How it's built** (`.github/workflows/ci.yml`): on every push to `main` (or a `v*`
+tag), the image is built **only after lint and the tests pass**, pushed to GHCR, and
+smoke-tested (every app must be inside). Pushes to `version-16` and pull requests
+run lint and tests only.
+
+> The image uses frappe_docker's **custom** Containerfile with `apps.json` passed as
+> a **BuildKit secret**. Earlier builds passed it as a build-arg, which the current
+> Containerfile ignores, so those images held the Frappe framework only.
+
+**Tags** on `ghcr.io/flewops/school-erp`:
+
+| Tag | Moves? | Use |
+|---|---|---|
+| `v16-<commit>` (e.g. `v16-3ad0698`) | never | **deploy and roll back with this** |
+| `v16` | yes, newest `main` build | quick tests only |
+| `v1.2.0` (git tag) | never | named releases |
+
+**Manual build** (same result as CI):
 
 ```bash
-cd frappe_docker                       # the official repo (has the Containerfile)
-APPS_JSON=/path/to/school_suite/deploy/apps.json \
-  IMAGE_TAG=school-erp:v16 ./build.sh  # (copy build.sh here, or call by full path)
+cd frappe_docker && git checkout <FRAPPE_DOCKER_REF from deploy/versions.env>
+/path/to/school_suite/deploy/build.sh      # tags school-erp:v16 and school-erp:v16-<commit>
 ```
 
-Pins: `FRAPPE_BRANCH=version-16`, `PYTHON_VERSION=3.14.10`, `NODE_VERSION=24.22.2`
-(v16 requires Python 3.14+/Node 24+ — see the Phase 1 report).
+## Install, upgrade, roll back
 
-> **school_suite must be reachable by the builder.** Push it to the git URL in
-> `apps.json`, or inject it as a private repo with a build secret. Until then the
-> build fetches the six public apps; add school_suite as the last layer.
+`deploy/run_production.sh` does all three. On an existing site it takes a backup,
+switches to the new image and runs `bench migrate`; it reads the database password
+back from the env file instead of generating a new one.
+
+```bash
+# install or upgrade to a specific build
+SITE=erp.school.in LETSENCRYPT_EMAIL=it@school.in \
+  IMAGE=ghcr.io/flewops/school-erp:v16-<commit> ./deploy/run_production.sh
+
+# roll back: run it again with the previous v16-<commit> (then restore the
+# pre-upgrade backup if that release changed the schema)
+```
+
+With a registry image the default `PULL_POLICY=always` makes the server fetch the
+tag again; with the old default (`missing`) a server that already had `v16` kept
+running the old image after an upgrade.
 
 ## Multi-tenant plan: one site per school on a shared bench
 

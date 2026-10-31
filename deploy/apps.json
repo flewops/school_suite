@@ -1,9 +1,9 @@
 [
-  { "url": "https://github.com/frappe/erpnext",                  "branch": "version-16" },
+  { "url": "https://github.com/frappe/erpnext",                  "branch": "v16.53.0" },
   { "url": "https://github.com/frappe/payments",                 "branch": "version-16-hotfix" },
-  { "url": "https://github.com/frappe/hrms",                     "branch": "version-16" },
-  { "url": "https://github.com/frappe/education",                "branch": "version-16" },
-  { "url": "https://github.com/resilient-tech/india-compliance", "branch": "version-16" },
-  { "url": "https://github.com/frappe/lms",                      "branch": "version-16" },
+  { "url": "https://github.com/frappe/hrms",                     "branch": "v16.53.0" },
+  { "url": "https://github.com/frappe/education",                "branch": "v16.0.1" },
+  { "url": "https://github.com/resilient-tech/india-compliance", "branch": "v16.11.0" },
+  { "url": "https://github.com/frappe/lms",                      "branch": "v2.63.0" },
   { "url": "https://github.com/flewops/school_suite",            "branch": "main" }
 ]
