@@ -202,7 +202,7 @@ class TestSchoolSuite(IntegrationTestCase):
 		chetan = student("Chetan")
 		guardian = frappe.db.get_value("Student Guardian", {"parent": chetan}, "guardian")
 		frappe.db.set_value("Guardian", guardian, "mobile_number", "+919800000000")
-		day = add_days(nowdate(), -60)
+		day = demo_data.school_days(1, before=add_days(nowdate(), -60))[0]  # a past school day
 		past = frappe.get_doc(
 			{
 				"doctype": "Student Attendance",
