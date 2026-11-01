@@ -7,7 +7,7 @@ Run with:  bench --site school.localhost execute school_suite.setup.demo_data.ru
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, getdate, nowdate, today
+from frappe.utils import add_days, getdate, today
 
 TEST_PASSWORD = "Test@12345"  # local test credential only — never use in production
 DOMAIN = "demo.school"
@@ -225,18 +225,15 @@ def _group(name, ay, prog, students, instructor=None):
 	return g.name
 
 
-def _attendance(student, group, status, day_offset):
-	exists = frappe.db.exists(
-		"Student Attendance", {"student": student, "date": add_days(nowdate(), -day_offset)}
-	)
-	if exists:
+def _attendance(student, group, status, date):
+	if frappe.db.exists("Student Attendance", {"student": student, "date": date}):
 		return
 	a = frappe.get_doc(
 		{
 			"doctype": "Student Attendance",
 			"student": student,
 			"student_group": group,
-			"date": add_days(nowdate(), -day_offset),
+			"date": date,
 			"status": status,
 		}
 	)
@@ -277,6 +274,25 @@ def _lms(students):
 	return course_name
 
 
+def school_days(count, before=None):
+	"""The `count` most recent school days before `before` (default today), newest first.
+
+	Education refuses attendance on a date in the default company's holiday list,
+	so demo and test attendance must skip it: a fixed "yesterday" failed whenever
+	it fell on the Sunday weekly off.
+	"""
+	from education.education.doctype.student_attendance.student_attendance import get_holiday_list
+	from erpnext.setup.doctype.holiday_list.holiday_list import is_holiday
+
+	holiday_list = get_holiday_list()
+	days, day = [], getdate(before or today())
+	while len(days) < count:
+		day = add_days(day, -1)
+		if not is_holiday(holiday_list, day):
+			days.append(day)
+	return days
+
+
 def academic_year_dates(on=None):
 	"""Indian academic year (1 April - 31 March) containing `on` (default today)."""
 	d = getdate(on or today())
@@ -308,10 +324,11 @@ def run():
 	g1 = _group("Class 1A", ay, prog, [students["arya"], students["bodhi"]], teacher)
 	g2 = _group("Class 1B", ay, prog, [students["chetan"]])
 
-	_attendance(students["arya"], g1, "Present", 1)
-	_attendance(students["arya"], g1, "Absent", 2)
-	_attendance(students["bodhi"], g1, "Present", 1)
-	_attendance(students["chetan"], g2, "Present", 1)
+	last, before_last = school_days(2)
+	_attendance(students["arya"], g1, "Present", last)
+	_attendance(students["arya"], g1, "Absent", before_last)
+	_attendance(students["bodhi"], g1, "Present", last)
+	_attendance(students["chetan"], g2, "Present", last)
 
 	lms_course = _lms([students["arya"], students["bodhi"], students["chetan"]])
 

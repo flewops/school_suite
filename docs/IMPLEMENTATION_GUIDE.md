@@ -638,6 +638,13 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 - [ ] Email account configured; SMS/WhatsApp vendor wired in (if used).
 - [ ] Razorpay keys + Payment Gateway Account (if collecting online).
 - [ ] Zoom S2S app configured (if running live classes).
+- [ ] School logo set in **Education Settings → School / College Logo** (printed on report
+      cards and TCs).
+- [ ] If the FlewOps Whitelabel addon is installed: **Whitelabel Settings** filled (app name,
+      logo uploaded as a **public** file), **and** **Website Settings → Brand HTML** set to the
+      logo, e.g. `<img src="/files/school-logo.png" style="max-height: 28px">`. The addon
+      doesn't brand the top bar of `/parent` and `/principal`, so a new logo goes in both
+      places.
 - [ ] Frappe Cloud backups checked on the site **and a restore test done** (`deployment.md`).
 - [ ] Data-protection checklist reviewed by legal (`data_protection.md`).
 - [ ] `developer_mode` off in production.

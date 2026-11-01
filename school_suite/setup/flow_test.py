@@ -6,7 +6,7 @@ from frappe.utils import add_days, nowdate
 
 from school_suite import api
 from school_suite import online_learning as ol
-from school_suite.setup.demo_data import academic_year_name, assert_dev_site
+from school_suite.setup.demo_data import academic_year_name, assert_dev_site, school_days
 
 flow, ctx = {}, {}
 
@@ -287,7 +287,9 @@ def online_class_and_attendance():
 	# Only online-mode classes/students are processed, so flag the class (db write:
 	# skips the on_update LMS re-sync, which step 3 already ran).
 	frappe.db.set_value("Student Group", "Class 1A", "enable_online_batch", 1)
-	res = ol.mark_online_attendance("Class 1A", nowdate())
+	# the latest school day up to today: Education refuses attendance on a holiday
+	day = str(school_days(1, before=add_days(nowdate(), 1))[0])
+	res = ol.mark_online_attendance("Class 1A", day)
 	return {
 		"attendance": res,
 		"note": "LMS Live Class scheduling requires real Zoom S2S creds; placeholder disabled.",
