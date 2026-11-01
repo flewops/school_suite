@@ -11,7 +11,7 @@ ships no production image or server scripts. What it does ship is the CI that te
    Frappe **Version 16**, an **India region** (data stays in India; see
    `data_protection.md`).
 2. **Apps → Add App**, from the Marketplace: **ERPNext**, **Payments**, **Education**,
-   **Learning (LMS)**, and for schools that need them **HRMS** and **India Compliance**.
+   **Learning (LMS)**, **India Compliance**, and **HRMS** for schools that need it.
 3. **Apps → Add App → GitHub**: `flewops/school_suite`, branch **`main`**. If the repo is
    private, first install the Frappe Cloud GitHub app on the `flewops` account so Frappe
    Cloud can read it.
@@ -21,10 +21,10 @@ ships no production image or server scripts. What it does ship is the CI that te
 
 1. **New Site** on the bench group, e.g. `greenfield.frappe.cloud`, then add the
    school's own domain under **Site → Domains** (Frappe Cloud provisions TLS).
-2. **Install apps** on that site. Required: ERPNext, Education, LMS (Payments comes
-   with LMS) and School Suite. Optional per school: **HRMS** (staff payroll and leave)
-   and **India Compliance** (GST e-invoicing). School Suite is tested both with and
-   without the optional two.
+2. **Install apps** on that site: ERPNext, Education, LMS (Payments comes with LMS),
+   **India Compliance** and School Suite. India Compliance goes on **every** school (GST,
+   HSN/SAC on fee items); School Suite's tests and flow test assume it. **HRMS** (staff
+   payroll and leave) is optional per school.
 3. Open the site and follow `IMPLEMENTATION_GUIDE.md` from the Setup Wizard.
 
 School Suite's roles, custom fields, workflow and settings defaults are applied on
