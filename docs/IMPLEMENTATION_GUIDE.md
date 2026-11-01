@@ -638,7 +638,7 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 - [ ] Email account configured; SMS/WhatsApp vendor wired in (if used).
 - [ ] Razorpay keys + Payment Gateway Account (if collecting online).
 - [ ] Zoom S2S app configured (if running live classes).
-- [ ] Backups scheduled to S3 **and a restore test done** (`deployment.md`).
+- [ ] Frappe Cloud backups checked on the site **and a restore test done** (`deployment.md`).
 - [ ] Data-protection checklist reviewed by legal (`data_protection.md`).
 - [ ] `developer_mode` off in production.
 
@@ -686,6 +686,6 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 
 **Companion docs:** `indian_specifics.md` (fees/report cards/UDISE/notifications),
 `online_mode.md` (LMS batches, online attendance, Zoom & Razorpay setup +
-limits), `deployment.md` (production image, multi-tenant, backups/restore),
+limits), `deployment.md` (Frappe Cloud hosting, releases, backups/restore),
 `data_protection.md` (children's-data checklist), `GAP_LIST.md` (what's done vs. the
 remaining build/buy/skip work with effort estimates).

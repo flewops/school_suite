@@ -28,8 +28,8 @@ for one mid-level Frappe developer, excluding the school's own content/config.
 | Admission→fee→timetable→quiz→report full flow | 10/10 steps verified |
 | Schema in code (no fixtures), module-tagged for clean uninstall; upgrade from the fixtures version tested | `setup/install.py` |
 | 21 integration tests + CI (pre-commit lint, server tests) | `bench run-tests --app school_suite` |
-| Production image: every app pinned to a release, built only after tests pass, tagged `v16-<commit>`, smoke-tested | CI `image` job on `main` |
-| Upgrade path: backup + `bench migrate` on redeploy, stable DB password, pull new image | `deploy/run_production.sh` |
+| Hosting on Frappe Cloud: one site per school, release flow `version-16` → PR → `main` → deploy, backup + migrate on update | `docs/deployment.md` |
+| CI tests against pinned app versions; bump a pin before deploying that app's update on Frappe Cloud | `.github/workflows/ci.yml` |
 | Staff Role Profiles (School Admin, Principal, Accountant, Teacher, Parent) | tested with real logins |
 | Backup/restore, data-protection and deployment docs | files shipped |
 
@@ -58,8 +58,7 @@ for one mid-level Frappe developer, excluding the school's own content/config.
 | SMS / WhatsApp delivery | a provider (MSG91, Gupshup, Twilio, Meta WhatsApp Cloud) — plug into `notify.PROVIDERS` |
 | Payment gateway | Razorpay (already the chosen rail) — just credentials + account |
 | Video classes | Zoom (paid plan for reporting API) or Google Meet |
-| S3-compatible backup storage | AWS S3 / Wasabi / self-hosted MinIO |
-| Managed hosting (India region) | Frappe Cloud (India DC) or a cloud VM in an India region |
+| Managed hosting (India region), backups with offsite copies | **Frappe Cloud** (chosen) |
 
 ## ⏭️ SKIP (for the pilot; revisit later)
 | Gap | Why skip now |
