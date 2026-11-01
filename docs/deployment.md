@@ -1,84 +1,74 @@
-# Phase 6 — Deployment Readiness
+# Phase 6 — Deployment on Frappe Cloud
 
-## Production image: pinned, tested, tagged per commit
+School Suite is hosted on **Frappe Cloud**. Frappe Cloud builds the bench from the apps'
+git repositories, runs the servers, takes backups and applies updates, so this repo
+ships no production image or server scripts. What it does ship is the CI that tests
+`school_suite` against pinned app versions before anything reaches `main`.
 
-**What's in it** is pinned in two files, used by CI and both scripts alike:
+## One-time setup
 
-- `deploy/versions.env` — Frappe `v16.54.0`, Python `3.14.10`, Node `24.22.2`, and the
-  frappe_docker commit whose `images/custom/Containerfile` builds the image.
-- `deploy/apps.json` — each app at a **release tag**: ERPNext `v16.53.0`, HRMS
-  `v16.53.0`, Education `v16.0.1`, India Compliance `v16.11.0`, LMS `v2.63.0`.
-  Payments publishes no releases, so it stays on `version-16-hotfix`. bench clones
-  with `git clone --branch`, which takes a branch or tag, not a commit.
+1. **Bench Group** (a private one: custom apps from GitHub can't go on a shared bench).
+   Frappe **Version 16**, an **India region** (data stays in India; see
+   `data_protection.md`).
+2. **Apps → Add App**, from the Marketplace: **ERPNext**, **Payments**, **Education**,
+   **Learning (LMS)**, and for schools that need them **HRMS** and **India Compliance**.
+3. **Apps → Add App → GitHub**: `flewops/school_suite`, branch **`main`**. If the repo is
+   private, first install the Frappe Cloud GitHub app on the `flewops` account so Frappe
+   Cloud can read it.
+4. **Deploy** the bench group.
 
-To change a version, edit the pin, push to `version-16`, and let CI run the tests
-against it before it reaches `main`.
+## Add a school (one site per school)
 
-**How it's built** (`.github/workflows/ci.yml`): on every push to `main` (or a `v*`
-tag), the image is built **only after lint and the tests pass**, pushed to GHCR, and
-smoke-tested (every app must be inside). Pushes to `version-16` and pull requests
-run lint and tests only.
+1. **New Site** on the bench group, e.g. `greenfield.frappe.cloud`, then add the
+   school's own domain under **Site → Domains** (Frappe Cloud provisions TLS).
+2. **Install apps** on that site. Required: ERPNext, Education, LMS (Payments comes
+   with LMS) and School Suite. Optional per school: **HRMS** (staff payroll and leave)
+   and **India Compliance** (GST e-invoicing). School Suite is tested both with and
+   without the optional two.
+3. Open the site and follow `IMPLEMENTATION_GUIDE.md` from the Setup Wizard.
 
-> The image uses frappe_docker's **custom** Containerfile with `apps.json` passed as
-> a **BuildKit secret**. Earlier builds passed it as a build-arg, which the current
-> Containerfile ignores, so those images held the Frappe framework only.
+School Suite's roles, custom fields, workflow and settings defaults are applied on
+install and again on every migrate; nothing is configured by hand on Frappe Cloud.
 
-**Tags** on `ghcr.io/flewops/school-erp`:
+## Releasing School Suite changes
 
-| Tag | Moves? | Use |
-|---|---|---|
-| `v16-<commit>` (e.g. `v16-3ad0698`) | never | **deploy and roll back with this** |
-| `v16` | yes, newest `main` build | quick tests only |
-| `v1.2.0` (git tag) | never | named releases |
+1. Work on `version-16`; CI runs lint and the tests on every push.
+2. Open a pull request `version-16` → `main`; merge when CI is green.
+3. Frappe Cloud shows an update for the bench group (it tracks `main`). **Deploy** it.
+4. Frappe Cloud moves each site to the new deploy: it backs the site up and runs
+   `bench migrate`, which re-applies School Suite's setup through `after_migrate`.
+5. Spot-check one site: log in as a parent (`/parent`), the principal (`/principal`)
+   and the accountant (a fee invoice).
 
-**Manual build** (same result as CI):
+**Roll back:** revert the commit on `main` and deploy again. If the bad release changed
+the schema, also restore the site from its pre-update backup (**Site → Backups**).
 
-```bash
-cd frappe_docker && git checkout <FRAPPE_DOCKER_REF from deploy/versions.env>
-/path/to/school_suite/deploy/build.sh      # tags school-erp:v16 and school-erp:v16-<commit>
-```
+## Updating ERPNext, Education, LMS and the other apps
 
-## Install, upgrade, roll back
+Frappe Cloud offers upstream updates on the bench group too. Test them first:
 
-`deploy/run_production.sh` does all three. On an existing site it takes a backup,
-switches to the new image and runs `bench migrate`; it reads the database password
-back from the env file instead of generating a new one.
+1. Bump that app's pin in `.github/workflows/ci.yml` to the release Frappe Cloud is
+   offering, push to `version-16` and let CI pass.
+2. Merge to `main`, then deploy the update on Frappe Cloud.
 
-```bash
-# install or upgrade to a specific build
-SITE=erp.school.in LETSENCRYPT_EMAIL=it@school.in \
-  IMAGE=ghcr.io/flewops/school-erp:v16-<commit> ./deploy/run_production.sh
+Payments publishes no releases, so CI tests its `version-16-hotfix` branch.
 
-# roll back: run it again with the previous v16-<commit> (then restore the
-# pre-upgrade backup if that release changed the schema)
-```
+## Many schools on one bench group
 
-With a registry image the default `PULL_POLICY=always` makes the server fetch the
-tag again; with the old default (`missing`) a server that already had `v16` kept
-running the old image after an upgrade.
+- **Isolation:** each site has its own database and files; School Suite's row-level
+  permissions separate users *within* a site. One school can't see another's data.
+- **Trade-off:** all sites on a bench group **update together**. A school that needs
+  different app versions (or its own server) gets its own bench group.
+- **Scaling:** move to a bigger plan first; a school that outgrows the shared bench
+  group moves to its own.
 
-## Multi-tenant plan: one site per school on a shared bench
+## Backups and restore test
 
-- One **bench** (one image, one set of workers/Redis), **N sites** — `school-a.in`,
-  `school-b.in`, … — each its own database and files. Add a school with
-  `bench new-site <domain> --install-app erpnext,payments,education,hrms,india_compliance,lms,school_suite`.
-- **Isolation:** data is per-site (separate DB); school_suite's row-level
-  permissions isolate users *within* a site. Cross-site access is impossible.
-- **Scaling:** vertical first; when a tenant outgrows the shared bench, move that
-  site to its own bench (backup → restore on new bench). DNS: one A record per
-  school pointing at the proxy; Frappe routes by host header.
-- **Trade-off:** shared bench = cheap and simple, but **all sites upgrade together**
-  (one app version set). A school needing a different version must move to its own
-  bench.
-
-## Backups to S3-compatible storage + restore test
-
-- Native: `bench --site <site> backup --with-files`. Verified locally — produces a
-  gzipped DB dump (+ files). Schedule daily via the bench's `backup` cron.
-- Off-site: Frappe ships S3 push — set **Backup Settings** (endpoint, bucket, access
-  key, secret) for any S3-compatible store (AWS S3, Wasabi, MinIO). Keys go in site
-  config / env, **never in git**.
-- **Restore test (run monthly — a backup you haven't restored is not a backup):**
+- Frappe Cloud takes **automated backups, with offsite copies**. Check the schedule
+  and retention on your plan under **Site → Backups**.
+- **Restore test (monthly; a backup you haven't restored is not a backup):** download
+  the latest database, public and private files from **Site → Backups**, then restore
+  them on a local dev bench:
 
   ```bash
   bench new-site restore-test.localhost --admin-password admin
@@ -91,9 +81,14 @@ running the old image after an upgrade.
   bench drop-site restore-test.localhost --force                 # clean up
   ```
 
+  The same backup files restore into a new Frappe Cloud site (**New Site → restore from
+  backup**) when a school has to be moved.
+
 ## Operational notes
 
-- Run `bench --site <site> migrate` after every image upgrade (re-applies school_suite's
-  schema and settings defaults through its `after_migrate` setup automatically).
-- Enable the scheduler in production (`bench --site <site> enable-scheduler`) so
-  LMS live-class attendance, reminders, and backups run.
+- The scheduler is on by default on Frappe Cloud; School Suite's absence alerts and
+  LMS live-class attendance depend on it.
+- `developer_mode` stays off. Demo data and the flow test refuse to run without it,
+  so they can't touch a school's site.
+- SMS, email, Razorpay and Zoom credentials are entered per site in the desk (SMS
+  Settings, Email Account, Razorpay Settings, LMS Zoom Settings), never in git.

@@ -24,7 +24,8 @@
       (enforced in `reports.py`).
 
 ## Hosting & residency
-- [ ] **India-region hosting** for DB, files and backups (incl. the S3 bucket).
+- [ ] **India-region hosting** for DB, files and backups: the Frappe Cloud bench group's
+      region, and where its offsite backup copies are kept.
 - [ ] Sub-processors (SMS/WhatsApp/email vendors, Zoom, Razorpay) listed with their
       data-residency and DPAs on file.
 - [ ] TLS everywhere; secrets in env/secret store, never in git (enforced in this

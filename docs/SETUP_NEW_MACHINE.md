@@ -9,7 +9,7 @@ git:
 
 | Lives in your git repo | NOT in git — handled separately |
 |---|---|
-| `school_suite` app: code, hooks, schema setup in `setup/install.py` (roles, custom fields, workflow, property setters, settings), tests, `docs/`, `deploy/` | Frappe + the 6 other apps (erpnext, payments, hrms, education, india_compliance, lms) — pulled from their own repos, pinned to **version-16** |
+| `school_suite` app: code, hooks, schema setup in `setup/install.py` (roles, custom fields, workflow, property setters, settings), tests, `docs/` | Frappe + the 6 other apps (erpnext, payments, hrms, education, india_compliance, lms) — pulled from their own repos, pinned to **version-16** |
 | | The bench itself (`frappe-bench/`), Python venv, node_modules |
 | | **Your database and uploaded files** — moved with a **backup/restore**, not git |
 | | Site config / secrets (never commit these) |
@@ -19,7 +19,7 @@ So on a new Mac you (1) rebuild the stack, (2) install all apps incl. your
 configured database (otherwise you get a clean empty one).
 
 Two paths below: **A** for a developer/local box (same devcontainer we used), **B**
-for a real production server.
+for production, which runs on Frappe Cloud.
 
 ---
 
@@ -133,25 +133,12 @@ docker exec -d devcontainer-frappe-1 bash -lc 'cd /workspace/development/frappe-
 
 ---
 
-## Option B — Real production server (not a laptop)
+## Option B — Production (Frappe Cloud)
 
-For an actual server, don't run the devcontainer — build the **pinned production
-image** instead (it bakes in all apps + `school_suite`). This repo ships the files:
-
-- `deploy/apps.json` — all apps pinned to v16. **Edit the last line** to your
-  `school_suite` git URL.
-- `deploy/build.sh` — builds the image from frappe_docker's custom Containerfile, with the versions pinned in `deploy/versions.env` and `deploy/apps.json`.
-- `.github/workflows/build-image.yml` — the same build in CI, pushing to GHCR.
-
-```bash
-git clone https://github.com/frappe/frappe_docker && cd frappe_docker
-APPS_JSON=/path/to/school_suite/deploy/apps.json IMAGE_TAG=school-erp:v16 \
-  /path/to/school_suite/deploy/build.sh
-```
-Then run it with frappe_docker's production compose (`compose.yaml` + overrides:
-Traefik for TLS, a managed MariaDB/Redis, your domain). Create the site and install
-apps as in A4, then restore your backup (A5). Full notes, multi-tenant (one site per
-school) and S3 backups/restore: **`deployment.md`**.
+Schools run on **Frappe Cloud**, not on a server you build yourself. Frappe Cloud
+fetches `school_suite` from GitHub (branch `main`) along with the other apps, and
+handles servers, TLS, backups and updates. Setup, adding a school, releasing changes
+and restoring a backup: **`deployment.md`**.
 
 ---
 
