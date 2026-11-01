@@ -31,15 +31,19 @@ def prereq():
 	ctx["income"] = inc[0] if inc else None
 	ctx["receivable"] = "Debtors - DS"
 
-	# India Compliance makes HSN/SAC mandatory on sales items; pick a valid SAC
-	# (9992 = education services) from the loaded GST HSN Code list.
-	_hsn = frappe.db.sql(
-		"""select hsn_code from `tabGST HSN Code`
-           where length(hsn_code) in (6,8) and hsn_code like '9992%'
-           order by length(hsn_code) limit 1"""
-	)
-	if not _hsn:
-		_hsn = frappe.db.sql("select hsn_code from `tabGST HSN Code` where length(hsn_code) in (6,8) limit 1")
+	# India Compliance (optional per school) makes HSN/SAC mandatory on sales items;
+	# when it is installed, pick a valid SAC (9992 = education services) from its list.
+	_hsn = None
+	if frappe.db.table_exists("GST HSN Code"):
+		_hsn = frappe.db.sql(
+			"""select hsn_code from `tabGST HSN Code`
+               where length(hsn_code) in (6,8) and hsn_code like '9992%'
+               order by length(hsn_code) limit 1"""
+		)
+		if not _hsn:
+			_hsn = frappe.db.sql(
+				"select hsn_code from `tabGST HSN Code` where length(hsn_code) in (6,8) limit 1"
+			)
 	ctx["hsn"] = _hsn[0][0] if _hsn else None
 
 	# Education v16 maps every Fee Category to an ERPNext Item (created on insert).
