@@ -336,9 +336,12 @@ the Principal can click **Reject** to send it back to Draft.)
 *Grade 1 - A*. It carries the **student list** and the **teacher(s)**. Attendance,
 timetable, exams, and online batches all attach here.
 
-*Fast way:* **Education → Tools → Student Group Creation Tool** — choose Program +
-Academic Year (+ Batch), click **Get Students**, and it pulls everyone enrolled.
-Save → it creates the Student Group populated.
+*Fast way:* **Education → Tools → Student Group Creation Tool** — choose Academic
+Year + Program, click **Get Courses**. It lists a row for **every** section in the
+school (A, B, C…) plus one per course: keep the rows you want (for class-sections,
+the *Batch* rows this class has) and delete the rest. **Create Student Groups** →
+each group is named like `Grade 1/A/2026-2027` and filled with the students whose
+enrollment is **approved (Enrolled)** — run it after 6.1's approvals.
 
 *Manual way:* **Education → Student Management → Student Group → + New**
 | Field | Enter |
@@ -501,6 +504,13 @@ work on it natively.
 Sales Invoice with the **Student** field set. (The older **Fees** document still
 works and is counted too, but new schools should use Fee Schedules.)
 
+> The invoices are created as **Drafts** unless **Education Settings → Submit Sales
+> Invoice from Program Enrollment / Fee Schedule** is ticked. Drafts are not counted
+> on `/parent` or `/principal` and can't be paid: tick the setting before **Create
+> Fees**, or submit them afterwards from the Sales Invoice list (filter by the Fee
+> Schedule → select all → **Actions → Submit**). For more than 10 students the
+> invoices are created in the background; the schedule's status shows progress.
+
 ### 10.4 🟢 Indian fee policies (School Suite)
 Set these in **School Suite Settings** (search the awesome bar); no code changes:
 - **Sibling discount:** tick *Auto-apply Sibling Discount* and set the 2nd-child and
@@ -611,7 +621,7 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 | Task | Where |
 |---|---|
 | Take attendance | Education → Attendance → Student Attendance Tool |
-| Raise a term's fees | Education → Fee Management → Fees (from the Fee Structure) |
+| Raise a term's fees | Education → Fee Management → Fee Schedule (10.3) |
 | Record a payment | the Fee / Payment Entry / Razorpay checkout |
 | Enter exam marks | Education → Assessment → Assessment Result |
 | Publish a report card | `/report-card?student=<ID>` → Print |
@@ -619,10 +629,116 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 | Issue a Transfer Certificate | fill leaving fields on the Student, then `/transfer-certificate?student=<ID>` → Print |
 | Message parents | Notification (email) / `notify.*` (SMS/WhatsApp) |
 | Check the school at a glance | `/principal` |
+| Promote students to the next class (year end) | Part 16 |
 
 ---
 
-## Part 16 — Go-live checklist
+## Part 16 — Year end: promote students to the next class
+
+No student-by-student editing: a whole class-section is promoted in one go with
+Education's **Program Enrollment Tool**, approved in bulk, and then the new year's
+classes and fees are created. Last year's enrollments, classes, attendance, marks
+and invoices are not touched; they stay as the record of that year.
+
+**Who:** School Admin (16.1–16.4), Principal (approvals in 16.3), Accountant (16.6).
+**Order matters:** approve (16.3) **before** creating classes (16.4), because the
+class tool only picks up approved enrollments.
+
+> Verified end to end on a test site: a class promoted with a section change, a
+> repeater, a leaver, bulk approval, the new classes, the teacher's access and the
+> new year's invoices.
+
+### 16.1 Before you start (once per year)
+1. Create the **new Academic Year** (and its Terms, if you use them) — 2.1 / 2.2.
+2. Publish **last year's report cards** first (11.3): in 16.5 teachers move to their
+   new classes.
+3. **Leavers:** issue the Transfer Certificate (Part 12), then untick **Enabled** on
+   the Student. Disabled students are left out of the promotion automatically.
+4. Open last year's **Program Enrollment** list and clear anything still in *Draft*
+   or *Pending Principal Approval* (approve or reject it). The tool fetches those
+   too, and would promote a child who was never admitted.
+5. Decide which students **repeat** their class.
+
+### 16.2 Promote a class-section  *(Education → Tools → Program Enrollment Tool)*
+
+| Field | Enter |
+|---|---|
+| Get Students From | `Program Enrollment` |
+| Program | the class that is finishing, e.g. `Class 5` |
+| Academic Year | the year that is ending, e.g. `2026-2027` |
+| Student Batch Name | the section, e.g. `A` |
+
+Click **Get Students**. In the Students table, **delete the rows** of students who
+repeat (see below) and of anyone never admitted.
+
+| Field | Enter |
+|---|---|
+| New Program | the next class, e.g. `Class 6` |
+| New Academic Year | e.g. `2027-2028` (and New Academic Term, if used) |
+| New Student Batch | the new section, e.g. `A` |
+| Enrollment Date | first day of the new year, e.g. `01-04-2027` |
+
+Click **Enroll Students** → one new Program Enrollment per student, in **Draft**.
+
+**Sections:** each fetched row keeps the student's **current** section, and *New
+Student Batch* only fills rows whose Batch is empty. To keep sections as they are,
+do nothing. To change a student's section, edit the Batch on their row. To put the
+whole class into one new section, clear the Batch on the rows and set *New Student
+Batch*.
+
+Repeat 16.2 for every class-section (one run each).
+
+**Repeaters:** run the tool again for the same section, keep only the repeating
+students, and set **New Program** to the **same class** (e.g. `Class 5` again for
+`2027-2028`).
+
+### 16.3 Approve the new enrollments in bulk  *(Program Enrollment list)*
+1. **School Admin:** filter *Academic Year = 2027-2028* and *Workflow State = Draft*
+   → tick the select-all box → **Actions → Apply for Approval**.
+2. **Principal:** filter *Workflow State = Pending Principal Approval* → select all
+   → **Actions → Approve** → they become *Enrolled*.
+
+Up to 19 documents are processed at once; 20–500 run in the background (refresh the
+list after a minute). Select at most 500 per action. A School Admin cannot approve;
+only the Principal can.
+
+### 16.4 Create the new year's classes  *(Education → Tools → Student Group Creation Tool)*
+Run it **per class** (Program), after 16.3:
+1. **Academic Year** = `2027-2028` (and Term, if used), **Program** = `Class 6` →
+   **Get Courses**.
+2. The table lists a row for **every** section in the school plus one per course.
+   Keep only the *Batch* rows for the sections this class has (e.g. A and B) and
+   delete the others; otherwise empty classes are created.
+3. **Create Student Groups** → `Class 6/A/2027-2028`, `Class 6/B/2027-2028`, each
+   filled with the approved students of that section. Repeaters appear in their
+   class's group, e.g. `Class 5/A/2027-2028`.
+4. Open each new class: add the **class teacher** under *Instructors* (6.2), and tick
+   🟢 **Enable Online (LMS) Batch** if the class learns online (Part 8).
+
+### 16.5 Move teachers to their new classes
+🟢 A teacher sees the students of **every** class they are listed on, including last
+year's. Ticking *Disabled* on last year's class does **not** change that. Once last
+year's report cards are out, open each of **last year's classes** and remove the
+teacher from the *Instructors* table; the teacher then sees only the new class.
+
+### 16.6 Bill the new year  *(Accountant)*
+1. A **Fee Structure** per class for the new year (10.2).
+2. A **Fee Schedule** per class with the new year's classes in *Student Groups*
+   (10.3) → **Save → Submit → Create Fees** → one invoice per promoted student.
+3. Make sure the invoices are **submitted**: tick the Education Settings option
+   before step 2, or submit the drafts in bulk afterwards (see the note in 10.3).
+   Drafts don't show to parents and can't be paid.
+
+### 16.7 Good to know
+- One tool run per class-section: a school with 12 classes × 2 sections needs about
+  24 runs of a few clicks each, plus the two bulk approvals. There is no single
+  "promote the whole school" button.
+- The tool doesn't read exam results; who repeats is decided by you (16.1, step 5).
+- Promotions go through the same principal approval as new admissions (16.3).
+
+---
+
+## Part 17 — Go-live checklist
 
 - [ ] Real school name set on the Company (before real data).
 - [ ] Academic Year + Terms created.
@@ -670,7 +786,7 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 
 ---
 
-## Part 17 — Troubleshooting & FAQ
+## Part 18 — Troubleshooting & FAQ
 
 - **"Could not find … / field is mandatory on a link":** you're creating something
   before its prerequisite exists. Create the prerequisite first (e.g. Academic Year
