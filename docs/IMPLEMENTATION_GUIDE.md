@@ -531,6 +531,35 @@ live key/secret in **Razorpay Settings**, create a **Payment Gateway Account**
 **Payment Request** on a fee to generate a hosted checkout link parents can pay.
 Details: `online_mode.md`.
 
+### 10.6 Seeing fees: pending, collected, by class and by year
+
+| You want to see | Open | Who can open it | How to filter |
+|---|---|---|---|
+| This year's billed, collected, overdue, not yet due, and arrears from earlier years | 🟢 `/principal` → *Fee Collection* | Principal, School Admin | pick the **Academic Year** at the top |
+| The same per class and section | 🟢 `/principal` → *Fees by class* | Principal, School Admin | follows the chosen year |
+| Which students owe, by name (bills raised as **Fees**) | Education → Fee Management → **Fees** | School Admin, Principal, Accountant | filter **Program** (class), **Student Batch** (section), **Academic Year**, **Academic Term**, **Student**; click the red **Overdue** or orange **Unpaid** label to list only those |
+| Which students owe, by name (**invoices** from a Fee Schedule) | Accounting → **Sales Invoice** | Accountant | **Status** = *Overdue* / *Unpaid* / *Partly Paid*; **Fee Schedule** for one class and year; **Student** for one child |
+| Totals per student (paid, outstanding) | Education → Reports → **Student Fee Collection** | School Admin, Principal | all years; reads invoices only |
+| Totals per class for a date range | Education → Reports → **Program Wise Fee Collection** | School Admin, Principal, Accountant | **From / To Date** (by posting date). For invoices the To Date itself is not included: to cover the year up to 31 March, enter 1 April. |
+| How long amounts have been overdue | Accounting → **Accounts Receivable** | Accountant | ageing buckets (0–30, 31–60 … days), by party |
+| Money received in a period | Accounting → **Payment Entry** | Accountant | Posting Date range, Party |
+
+**In any list:** switch to **Report view** to show columns such as Student,
+Outstanding Amount and Due Date; turn on the **totals row**; use **Group By** (e.g. by
+Status or Student) for subtotals; **save the filter** (e.g. "Class 9 – overdue").
+
+**Good to know**
+- A Sales Invoice has no *class* or *academic year* field of its own: in lists you
+  reach them through its **Fee Schedule** (one per class and year/term). The
+  `/principal` dashboard does this for you.
+- `/principal` counts a bill as overdue from the day **after** its due date; the red
+  *Overdue* label in the Fees list already shows on the due date itself.
+- **Who sees fee figures:** Principal and School Admin see totals, per-class figures
+  and per-student balances, but not the invoice and payment documents themselves,
+  which belong to the Accountant. A **teacher** has no fee screen. A **parent** sees
+  only their own children's fees on `/parent`. Draft bills are counted nowhere
+  (10.3).
+
 ---
 
 ## Part 11 — Exams, results and report cards
@@ -636,6 +665,7 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 |---|---|
 | Take attendance | Education → Attendance → Student Attendance Tool |
 | Raise a term's fees | Education → Fee Management → Fee Schedule (10.3) |
+| See fees collected and pending, by class or year | `/principal`, Fees list, fee reports (10.6) |
 | Record a payment | the Fee / Payment Entry / Razorpay checkout |
 | Enter exam marks | Education → Assessment → Assessment Result |
 | Publish a report card | `/report-card?student=<ID>` → Print |
@@ -654,7 +684,12 @@ Education's **Program Enrollment Tool**, approved in bulk, and then the new year
 classes and fees are created. Last year's enrollments, classes, attendance, marks
 and invoices are not touched; they stay as the record of that year.
 
-**Who:** School Admin (16.1–16.4), Principal (approvals in 16.3), Accountant (16.6).
+**The same site runs every year; no new instance is needed.** Students, attendance,
+marks, invoices, payments, logins and settings all carry over. Last year's unpaid
+bills stay open and show as *Arrears from earlier years* on `/principal`. A new
+site is only for a new school.
+
+**Who:** School Admin (16.1–16.4), Principal (approvals in 16.3), Accountant (16.6, 16.8).
 **Order matters:** approve (16.3) **before** creating classes (16.4), because the
 class tool only picks up approved enrollments.
 
@@ -663,15 +698,20 @@ class tool only picks up approved enrollments.
 > new year's invoices.
 
 ### 16.1 Before you start (once per year)
-1. Create the **new Academic Year** (and its Terms, if you use them) — 2.1 / 2.2.
-2. Publish **last year's report cards** first (11.3): in 16.5 teachers move to their
+1. Create the **new Academic Year** (and its Terms, if you use them) — 2.1 / 2.2 —
+   and set it in **Education Settings → Current Academic Year**.
+2. Check the **new Fiscal Year** exists (Accounting → Fiscal Year). ERPNext creates
+   it automatically three days before the current one ends.
+3. Create the new year's **Holiday List** (4.1) and set it as the **Company's default
+   holiday list**: student attendance is checked against it.
+4. Publish **last year's report cards** first (11.3): in 16.5 teachers move to their
    new classes.
-3. **Leavers:** issue the Transfer Certificate (Part 12), then untick **Enabled** on
+5. **Leavers:** issue the Transfer Certificate (Part 12), then untick **Enabled** on
    the Student. Disabled students are left out of the promotion automatically.
-4. Open last year's **Program Enrollment** list and clear anything still in *Draft*
+6. Open last year's **Program Enrollment** list and clear anything still in *Draft*
    or *Pending Principal Approval* (approve or reject it). The tool fetches those
    too, and would promote a child who was never admitted.
-5. Decide which students **repeat** their class.
+7. Decide which students **repeat** their class.
 
 ### 16.2 Promote a class-section  *(Education → Tools → Program Enrollment Tool)*
 
@@ -747,8 +787,15 @@ teacher from the *Instructors* table; the teacher then sees only the new class.
 - One tool run per class-section: a school with 12 classes × 2 sections needs about
   24 runs of a few clicks each, plus the two bulk approvals. There is no single
   "promote the whole school" button.
-- The tool doesn't read exam results; who repeats is decided by you (16.1, step 5).
+- The tool doesn't read exam results; who repeats is decided by you (16.1, step 7).
 - Promotions go through the same principal approval as new admissions (16.3).
+
+### 16.8 Close last year's books  *(Accountant, with the school's CA)*
+After the financial year ends, post a **Period Closing Voucher** (Accounting →
+Period Closing Voucher) for the closed year: it moves that year's income and expense
+into reserves. Balance-sheet accounts, including fees still receivable, carry over
+on their own. To stop anyone changing the closed year, lock it with an **Accounting
+Period**.
 
 ---
 
@@ -817,6 +864,24 @@ teacher from the *Instructors* table; the teacher then sees only the new class.
   see it, run `bench --site <site> migrate` so the fix is applied.
 - **HSN/SAC error on a fee Item:** set a valid 6- or 8-digit HSN/SAC on the Item
   (10.1).
+- **Is the Fee Collection on `/principal` per academic year?** Yes. Pick the year at
+  the top. Each bill counts in the year it was raised for (its Fee Schedule's or
+  Fees' academic year; a one-off invoice by its posting date), and unpaid bills of
+  earlier years show separately as arrears (Part 14).
+- **Where do I see who owes and how much, per class or year?** 10.6.
+- **Can the Principal or School Admin see each student's dues?** Yes: the Fees list,
+  the *Student Fee Collection* report and `/principal` (10.6). The invoice and
+  payment documents themselves are the Accountant's.
+- **Can a class teacher see a student's fee balance?** Not on any screen. (Technical
+  note: School Suite's `get_student_dashboard` API returns the fee totals of a
+  teacher's own-class students.) A class-wise dues view for teachers is planned,
+  not built.
+- **Fee invoices don't show to parents / aren't counted:** they are still drafts;
+  submit them (note in 10.3).
+- **Program Wise Fee Collection leaves out the last day:** for invoices its To Date
+  is not included; enter the day after (10.6).
+- **Do we need a new site every academic year?** No. The same site runs every year
+  (Part 16); only a new school gets a new site.
 - **Can't open the site:** the server may be stopped, or another project grabbed the
   port. Restart: `docker start devcontainer-mariadb-1 devcontainer-redis-cache-1
   devcontainer-redis-queue-1 devcontainer-frappe-1` then
