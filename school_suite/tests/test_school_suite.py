@@ -338,8 +338,102 @@ class TestSchoolSuite(IntegrationTestCase):
 		data = api.get_principal_dashboard()
 		self.assertIn("low_attendance", data)
 		self.assertEqual(flt(data["low_attendance_threshold"]), 75)
+		# no year asked for and none set in Education Settings: the year containing today
+		self.assertEqual(data["academic_year"], demo_data.academic_year_name())
+		for key in ("billed", "collected", "overdue", "not_yet_due", "arrears", "by_class", "draft_bills"):
+			self.assertIn(key, data["fee_collection"])
 		frappe.set_user(GUARDIAN_MEERA)
 		self.assertRaises(frappe.PermissionError, api.get_principal_dashboard)
+
+	def test_fee_collection_follows_academic_year(self):
+		for name, start, end in (
+			("2019-2020", "2019-04-01", "2020-03-31"),
+			("2020-2021", "2020-04-01", "2021-03-31"),
+		):
+			if not frappe.db.exists("Academic Year", name):
+				frappe.get_doc(
+					{
+						"doctype": "Academic Year",
+						"academic_year_name": name,
+						"year_start_date": start,
+						"year_end_date": end,
+					}
+				).insert(ignore_permissions=True)
+		# A Fee Schedule raised for 2020-21; only its year and class matter here.
+		schedule = frappe.get_doc(
+			{
+				"doctype": "Fee Schedule",
+				"fee_structure": self.fee_structure,
+				"academic_year": "2020-2021",
+				"program": "Grade 5",
+				"posting_date": nowdate(),
+				"due_date": nowdate(),
+			}
+		)
+		schedule.flags.update(ignore_validate=True, ignore_mandatory=True, ignore_links=True)
+		schedule.insert(ignore_permissions=True)
+
+		# Bills are posted today; what places them in a year is their Fee Schedule, or
+		# the posting date for a one-off invoice. Amounts paid, due dates and posting
+		# dates are set directly to stand in for history.
+		partly_paid = self.make_invoice("Arya", rate=5000, submit=True)
+		frappe.db.set_value(
+			"Sales Invoice",
+			partly_paid.name,
+			{"fee_schedule": schedule.name, "due_date": "2020-06-30", "outstanding_amount": 2000},
+		)
+		not_due = self.make_invoice("Bodhi", rate=4000, submit=True)
+		frappe.db.set_value(
+			"Sales Invoice",
+			not_due.name,
+			{"fee_schedule": schedule.name, "due_date": add_days(nowdate(), 30)},
+		)
+		earlier = self.make_invoice("Chetan", rate=3000, submit=True)
+		frappe.db.set_value("Sales Invoice", earlier.name, "posting_date", "2019-10-01")
+		draft = self.make_invoice("Arya", rate=1000)
+		frappe.db.set_value("Sales Invoice", draft.name, "fee_schedule", schedule.name)
+		# Bodhi's enrollment for 2020-21 gives his class and section.
+		enrollment = frappe.new_doc("Program Enrollment")
+		enrollment.update(
+			{
+				"name": "TEST-PE-2020-BODHI",
+				"student": student("Bodhi"),
+				"program": "Grade 5",
+				"student_batch_name": "B",
+				"academic_year": "2020-2021",
+				"enrollment_date": "2020-04-01",
+				"docstatus": 1,
+			}
+		)
+		enrollment.db_insert()
+
+		fee = api.get_principal_dashboard("2020-2021")["fee_collection"]
+		self.assertEqual(
+			{
+				k: fee[k]
+				for k in ("billed", "collected", "outstanding", "overdue", "not_yet_due", "collection_pct")
+			},
+			{
+				"billed": 9000,
+				"collected": 3000,
+				"outstanding": 6000,
+				"overdue": 2000,
+				"not_yet_due": 4000,
+				"collection_pct": 33.3,
+			},
+		)
+		self.assertEqual(fee["arrears"], {"outstanding": 3000, "students": 1})  # Chetan, 2019-20
+		self.assertEqual(fee["draft_bills"], 1)
+		classes = {c["class"]: (c["billed"], c["overdue"]) for c in fee["by_class"]}
+		self.assertEqual(classes, {"Grade 5": (5000, 2000), "Grade 5 · B": (4000, 0)})
+
+		# The same bills are not part of the current year.
+		current = api.get_principal_dashboard(demo_data.academic_year_name())["fee_collection"]
+		self.assertNotIn("Grade 5 · B", [c["class"] for c in current["by_class"]])
+
+		# Education Settings' current year is the default when none is asked for.
+		frappe.db.set_single_value("Education Settings", "current_academic_year", "2020-2021")
+		self.assertEqual(api.get_principal_dashboard()["academic_year"], "2020-2021")
 
 	def test_udise_export_and_transfer_certificate(self):
 		udise = reports.udise_export()
@@ -360,6 +454,7 @@ class TestSchoolSuite(IntegrationTestCase):
 			(GUARDIAN_MEERA, "parent", "Arya"),
 			(GUARDIAN_MEERA, f"report-card?student={student('Arya')}", "Report Card"),
 			("Administrator", "principal", "Principal Dashboard"),
+			("Administrator", f"principal?academic_year={demo_data.academic_year_name()}", "Not yet due"),
 			("Administrator", f"transfer-certificate?student={student('Arya')}", "Transfer Certificate"),
 		]
 		for user, path, expected in pages:
