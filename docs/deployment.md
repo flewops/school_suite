@@ -50,6 +50,8 @@ Frappe Cloud offers upstream updates on the bench group too. Test them first:
 1. Bump that app's pin in `.github/workflows/ci.yml` to the release Frappe Cloud is
    offering, push to `version-16` and let CI pass.
 2. Merge to `main`, then deploy the update on Frappe Cloud.
+3. After an Education update, open **Role Permissions Manager → Sales Invoice** on each
+   site and remove any **Student** or **Guardian** row (Implementation Guide 9.4).
 
 Payments publishes no releases, so CI tests its `version-16-hotfix` branch.
 
