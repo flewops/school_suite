@@ -10,7 +10,7 @@ to pass a student they are allowed to see.
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, format_time
+from frappe.utils import cint, flt, format_time, nowdate
 
 from school_suite.permissions import (
 	FULL_ACCESS_ROLES,
@@ -265,18 +265,131 @@ def get_student_dashboard(student: str):
 # --------------------------------------------------------------------------- #
 # Principal dashboard
 # --------------------------------------------------------------------------- #
-def _year_date_condition(academic_year):
-	"""SQL date filter for the academic year (defaults to Education Settings' current
-	year). Empty string when no year is configured, i.e. all history."""
-	academic_year = academic_year or frappe.db.get_single_value("Education Settings", "current_academic_year")
-	if not academic_year:
+def _resolve_academic_year(academic_year=None):
+	"""The academic year a dashboard reports on: the one asked for, else Education
+	Settings' current year, else the year that contains today. None when no year is
+	set up, in which case the dashboard covers all history."""
+	fields = ["name", "year_start_date", "year_end_date"]
+	for name in (academic_year, frappe.db.get_single_value("Education Settings", "current_academic_year")):
+		year = name and frappe.db.get_value("Academic Year", name, fields, as_dict=True)
+		if year and year.year_start_date and year.year_end_date:
+			return year
+	today = nowdate()
+	return frappe.db.get_value(
+		"Academic Year",
+		{"year_start_date": ["<=", today], "year_end_date": [">=", today]},
+		fields,
+		as_dict=True,
+		order_by="year_start_date desc",
+	)
+
+
+def _year_date_condition(year):
+	"""SQL date filter on Student Attendance for `year` (see _resolve_academic_year).
+	Empty string when there is no year, i.e. all history."""
+	if not year:
 		return ""
-	start, end = frappe.db.get_value(
-		"Academic Year", academic_year, ["year_start_date", "year_end_date"]
-	) or (None, None)
-	if not (start and end):
-		return ""
-	return f" and sa.date between {frappe.db.escape(str(start))} and {frappe.db.escape(str(end))}"
+	start, end = frappe.db.escape(str(year.year_start_date)), frappe.db.escape(str(year.year_end_date))
+	return f" and sa.date between {start} and {end}"
+
+
+# Every fee bill (submitted or draft) with the date that places it in an academic
+# year: the start of the year it was raised for (its Fee Schedule's year, or the
+# legacy Fees' own), else its posting date (a one-off invoice). So fees posted in
+# March for the year starting in April count in that new year.
+_FEE_BILLS = """
+	select si.student, si.docstatus, si.grand_total, si.outstanding_amount, si.due_date,
+	       coalesce(ay.year_start_date, si.posting_date) as year_date, fs.program
+	from `tabSales Invoice` si
+	left join `tabFee Schedule` fs on fs.name = si.fee_schedule
+	left join `tabAcademic Year` ay on ay.name = fs.academic_year
+	where si.docstatus < 2 and ifnull(si.student, '') != ''
+	union all
+	select f.student, f.docstatus, f.grand_total, f.outstanding_amount, f.due_date,
+	       coalesce(ay.year_start_date, f.posting_date), f.program
+	from `tabFees` f
+	left join `tabAcademic Year` ay on ay.name = f.academic_year
+	where f.docstatus < 2
+"""
+
+
+def _fee_collection(year):
+	"""Fee figures for `year`: billed, collected and outstanding (split into overdue
+	and not yet due) for the bills raised for that year, by class too; unpaid bills of
+	earlier years as arrears; and the number of draft bills, which are not counted
+	because they are not yet a demand on the parent."""
+	params = {"today": nowdate()}
+	if year:
+		params.update(start=year.year_start_date, end=year.year_end_date)
+		in_year, before_year = "year_date between %(start)s and %(end)s", "year_date < %(start)s"
+	else:
+		in_year, before_year = "1=1", "1=0"
+
+	rows = frappe.db.sql(
+		f"""
+		select student, program, sum(grand_total) as billed, sum(outstanding_amount) as outstanding,
+		       sum(case when due_date < %(today)s then outstanding_amount else 0 end) as overdue
+		from ({_FEE_BILLS}) bills
+		where docstatus = 1 and {in_year}
+		group by student, program
+		""",
+		params,
+		as_dict=True,
+	)
+	arrears = frappe.db.sql(
+		f"""
+		select student, sum(outstanding_amount) as outstanding
+		from ({_FEE_BILLS}) bills
+		where docstatus = 1 and {before_year}
+		group by student
+		having sum(outstanding_amount) > 0
+		""",
+		params,
+		as_dict=True,
+	)
+	drafts = frappe.db.sql(
+		f"select count(*) from ({_FEE_BILLS}) bills where docstatus = 0 and {in_year}", params
+	)[0][0]
+
+	# A student's class is their enrollment for the year; failing that, the class
+	# the bill was raised for.
+	enrolled = {}
+	if year:
+		for pe in frappe.get_all(
+			"Program Enrollment",
+			filters={"academic_year": year.name, "docstatus": 1},
+			fields=["student", "program", "student_batch_name"],
+		):
+			enrolled[pe.student] = " · ".join(filter(None, (pe.program, pe.student_batch_name)))
+	amounts = ("billed", "outstanding", "overdue")
+	by_class = {}
+	for row in rows:
+		label = enrolled.get(row.student) or row.program or _("Not enrolled")
+		group = by_class.setdefault(label, dict.fromkeys(amounts, 0.0))
+		for key in amounts:
+			group[key] += flt(row[key])
+
+	def summarise(figures):
+		billed, outstanding, overdue = (flt(figures[key], 2) for key in amounts)
+		collected = flt(billed - outstanding, 2)
+		return {
+			"billed": billed,
+			"collected": collected,
+			"outstanding": outstanding,
+			"overdue": overdue,
+			"not_yet_due": flt(outstanding - overdue, 2),
+			"collection_pct": round(collected * 100.0 / billed, 1) if billed else None,
+		}
+
+	return {
+		**summarise({key: sum(flt(row[key]) for row in rows) for key in amounts}),
+		"by_class": [{"class": label, **summarise(by_class[label])} for label in sorted(by_class)],
+		"arrears": {
+			"outstanding": flt(sum(flt(a.outstanding) for a in arrears), 2),
+			"students": len(arrears),
+		},
+		"draft_bills": cint(drafts),
+	}
 
 
 @frappe.whitelist()
@@ -284,7 +397,8 @@ def get_principal_dashboard(academic_year: str | None = None):
 	if not (_roles() & FULL_ACCESS_ROLES):
 		frappe.throw(_("Only Principal / School Admin may view this."), frappe.PermissionError)
 
-	year_cond = _year_date_condition(academic_year)
+	year = _resolve_academic_year(academic_year)
+	year_cond = _year_date_condition(year)
 	threshold = flt(get_settings().low_attendance_threshold)
 
 	# Class-wise attendance (grouped by student group)
@@ -323,22 +437,7 @@ def get_principal_dashboard(academic_year: str | None = None):
 	for row in low_attendance:
 		row["present"] = cint(row["present"])
 
-	# Fee collection (all years, so arrears stay visible; submitted fee bills only)
-	fee = {"billed": 0.0, "collected": 0.0, "outstanding": 0.0}
-	for doctype in FEE_DOCTYPES:
-		table = f"`tab{doctype}`"
-		student_cond = "and ifnull(student, '') != ''" if doctype == "Sales Invoice" else ""
-		row = frappe.db.sql(
-			f"""
-            select ifnull(sum(grand_total),0) as billed,
-                   ifnull(sum(grand_total-outstanding_amount),0) as collected,
-                   ifnull(sum(outstanding_amount),0) as outstanding
-            from {table} where docstatus = 1 {student_cond}
-            """,
-			as_dict=True,
-		)[0]
-		for key in fee:
-			fee[key] += flt(row[key])
+	fee = _fee_collection(year)
 
 	# Course completion (LMS) — avg progress per course
 	completion = frappe.db.sql(
@@ -361,6 +460,7 @@ def get_principal_dashboard(academic_year: str | None = None):
 		"lms_courses": frappe.db.count("LMS Course"),
 	}
 	return {
+		"academic_year": year.name if year else None,
 		"totals": totals,
 		"attendance_by_group": att,
 		"low_attendance": low_attendance,

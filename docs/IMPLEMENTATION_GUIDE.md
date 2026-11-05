@@ -609,9 +609,23 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 - **Parent Portal — `/parent`:** a signed-in parent sees, **per child**, attendance %,
   fee dues & receipts, grades, timetable, and **online-course progress** — Education
   and LMS data combined on one page. 🟢 School Suite; shows only their own children.
-- **Principal Dashboard — `/principal`:** class-wise attendance for the current
-  academic year, students below 75% attendance, fee collection (in ₹), and
-  online-course completion. 🟢 School Suite; Principal / School Admin only.
+- **Principal Dashboard — `/principal`:** for the academic year picked at the top
+  (default: Education Settings' current year, else the year containing today):
+  class-wise attendance, students below 75% attendance, and fee collection in ₹,
+  plus online-course completion. 🟢 School Suite; Principal / School Admin only.
+  - **Fee Collection** counts each submitted fee bill in the academic year it was
+    **raised for** (its Fee Schedule's or Fees' year; a one-off invoice by its posting
+    date), so fees taken in March for the next year count in the next year.
+    It shows **Billed**, **Collected** (after concessions and discounts) with the
+    collection %, **Overdue** (unpaid past the due date) and **Not yet due**, plus
+    **Arrears from earlier years** (unpaid bills of past years, and how many students
+    owe them, including students who have left).
+  - **Fees by class** gives the same figures per class and section, taken from each
+    student's enrollment for that year.
+  - Draft fee bills are not counted; a warning shows how many are still drafts.
+  - **Details** links open the native reports for names and dates: *Student Fee
+    Collection* (per student), *Program Wise Fee Collection* (per class, by date)
+    and, for the accountant, *Accounts Receivable* (by how long overdue).
 - **Student / Guardian portal (native):** `edu-portal`.
 
 ---
@@ -767,7 +781,8 @@ teacher from the *Instructors* table; the teacher then sees only the new class.
 
 **Found in the browser walkthrough (UAT) — check these too:**
 - [ ] **Education Settings → Current Academic Year** is set. Without it new
-      enrollments don't default the year and `/principal` shows all-time attendance.
+      enrollments don't default the year, and `/principal` opens on the academic
+      year that contains today (all history if no such year exists).
 - [ ] Every class (Student Group) has the **same "Group Based On"** (normally
       *Batch*). The Student Attendance Tool lists only groups of the type picked.
 - [ ] Use **one fee path**: Fee Schedule → Sales Invoices. Raising legacy *Fees* for the

@@ -5,6 +5,19 @@
 <div style="max-width:960px;margin:0 auto;">
   <h1>{{ _("Principal Dashboard") }}</h1>
 
+  {% if academic_years %}
+  <form method="get" style="margin:4px 0 12px;">
+    <label for="academic_year">{{ _("Academic Year") }}</label>
+    <select id="academic_year" name="academic_year" onchange="this.form.submit()" style="margin-left:6px;">
+      {% for year in academic_years %}
+      <option value="{{ year }}" {% if year == data.academic_year %}selected{% endif %}>{{ year }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit">{{ _("Show") }}</button></noscript>
+    <small class="text-muted" style="margin-left:8px;">{{ _("Attendance and fees are for this year.") }}</small>
+  </form>
+  {% endif %}
+
   <!-- KPI tiles -->
   <div class="row" style="margin:12px 0;">
     {% set t = data.totals %}
@@ -19,13 +32,45 @@
     {% endfor %}
   </div>
 
-  <!-- Fee collection -->
-  <h4>{{ _("Fee Collection") }}</h4>
-  <table class="table table-bordered table-sm" style="max-width:480px;">
-    <tr><td>{{ _("Billed") }}</td><td><b>{{ fee_fmt.billed }}</b></td></tr>
-    <tr><td>{{ _("Collected") }}</td><td><b style="color:#16a34a;">{{ fee_fmt.collected }}</b></td></tr>
-    <tr><td>{{ _("Outstanding") }}</td><td><b style="color:#dc2626;">{{ fee_fmt.outstanding }}</b></td></tr>
+  <!-- Fee collection: bills count in the academic year they were raised for -->
+  {% set fee = data.fee_collection %}
+  <h4>{{ _("Fee Collection") }} <small class="text-muted">{{ data.academic_year or _("all years") }}</small></h4>
+  <table class="table table-bordered table-sm" style="max-width:560px;">
+    <tr><td>{{ _("Billed") }}</td><td><b>{{ money(fee.billed) }}</b></td><td></td></tr>
+    <tr><td>{{ _("Collected") }}</td><td><b style="color:#16a34a;">{{ money(fee.collected) }}</b></td>
+        <td>{% if fee.collection_pct is not none %}{{ _("{0}% collected").format(fee.collection_pct) }}{% endif %}</td></tr>
+    <tr><td>{{ _("Overdue") }}</td><td><b {% if fee.overdue > 0 %}style="color:#dc2626;"{% endif %}>{{ money(fee.overdue) }}</b></td>
+        <td><small class="text-muted">{{ _("past the due date") }}</small></td></tr>
+    <tr><td>{{ _("Not yet due") }}</td><td><b>{{ money(fee.not_yet_due) }}</b></td><td></td></tr>
+    {% if data.academic_year %}
+    <tr><td>{{ _("Arrears from earlier years") }}</td><td><b {% if fee.arrears.outstanding > 0 %}style="color:#dc2626;"{% endif %}>{{ money(fee.arrears.outstanding) }}</b></td>
+        <td><small class="text-muted">{{ _("{0} students").format(fee.arrears.students) }}</small></td></tr>
+    {% endif %}
   </table>
+  <p class="text-muted small">{{ _("Collected is after concessions and discounts. A bill counts in the academic year it was raised for, even if it was posted earlier.") }}</p>
+  {% if fee.draft_bills %}
+  <div class="alert alert-warning" style="max-width:560px;">
+    {{ _("{0} fee bills for this year are still drafts and are not counted. Submit them so that parents can see and pay them.").format(fee.draft_bills) }}
+  </div>
+  {% endif %}
+
+  <h5>{{ _("Fees by class") }}</h5>
+  <table class="table table-bordered table-sm">
+    <thead><tr><th>{{ _("Class") }}</th><th>{{ _("Billed") }}</th><th>{{ _("Collected") }}</th>
+      <th>{{ _("Overdue") }}</th><th>{{ _("Not yet due") }}</th><th>{{ _("Collected %") }}</th></tr></thead>
+    <tbody>
+      {% for c in fee.by_class %}
+      <tr><td>{{ c["class"] }}</td><td>{{ money(c.billed) }}</td><td>{{ money(c.collected) }}</td>
+          <td {% if c.overdue > 0 %}style="color:#dc2626;"{% endif %}>{{ money(c.overdue) }}</td><td>{{ money(c.not_yet_due) }}</td>
+          <td>{% if c.collection_pct is not none %}{{ c.collection_pct }}%{% endif %}</td></tr>
+      {% else %}<tr><td colspan="6" class="text-muted">{{ _("No fees billed for this year") }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% if fee_reports %}
+  <p class="small">{{ _("Details:") }}
+    {% for label, route in fee_reports %}<a href="{{ route }}">{{ label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+  </p>
+  {% endif %}
 
   <!-- Class-wise attendance -->
   <h4>{{ _("Class-wise Attendance") }}</h4>
