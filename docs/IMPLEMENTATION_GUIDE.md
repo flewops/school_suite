@@ -454,6 +454,34 @@ permissions:
 To verify: log in as a parent and open the Student list — you should see only their
 child. (These rules were tested and confirmed during the build.)
 
+### 9.4 Close student access to invoices  *(every site, before the first bill)*
+When Education is installed it gives the **Student** role access to **every** Sales
+Invoice, not just the student's own. Any student login can then list, open and
+download all families' invoices. The rules in 9.3 don't cover Sales Invoice, so
+remove this access by hand:
+
+1. Open **Users → Permissions → Role Permissions Manager** and choose **Sales Invoice**.
+2. On the **Student** row, click the red **✕**. The row goes at once with no
+   confirmation, so check the role name before you click.
+3. If there is a **Guardian** row, remove it the same way.
+
+To verify: log in as a student and open **Fees** on `edu-portal`. It should say
+*No Fees found*.
+
+What this changes:
+- **Students:** the `edu-portal` **Fees** page always says *No Fees found*, even when
+  fees are due. Schedule, Grades and Attendance work as before.
+- **Parents:** nothing. They see fees on `/parent`.
+- **Accountant and Principal:** nothing. Fee Schedules, invoices and `/principal`
+  work as before.
+- **Online payment:** the **Pay Now** button on `edu-portal` is no longer available.
+  Use a Payment Request link (10.5).
+
+**Check again after every Education update.** The rows stay removed through a normal
+migrate, but Education has a one-time update that adds a Guardian row, and it runs on
+sites installed before that update existed. Any parent with the Guardian role (the
+**Invite Guardian** button gives it) can then read every family's invoices.
+
 ---
 
 ## Part 10 — Fees (term-wise, with Indian policies)
@@ -655,7 +683,8 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
   - **Details** links open the native reports for names and dates: *Student Fee
     Collection* (per student), *Program Wise Fee Collection* (per class, by date)
     and, for the accountant, *Accounts Receivable* (by how long overdue).
-- **Student / Guardian portal (native):** `edu-portal`.
+- **Student / Guardian portal (native):** `edu-portal`. Its Fees page stays empty once
+  invoice access is closed (9.4); parents see fees on `/parent`.
 
 ---
 
@@ -812,6 +841,9 @@ Period**.
 - [ ] Fee Categories (with HSN on Items), Fee Structures per class × term.
 - [ ] Logins created; each person has the correct School Suite role; a parent and a
       teacher login spot-checked for correct access.
+- [ ] **Role Permissions Manager → Sales Invoice** has no **Student** or **Guardian** row
+      (9.4). Do this before the first Fee Schedule, or students can read every family's
+      invoices.
 - [ ] Email account configured; SMS/WhatsApp vendor wired in (if used).
 - [ ] Razorpay keys + Payment Gateway Account (if collecting online).
 - [ ] Zoom S2S app configured (if running live classes).
@@ -856,6 +888,8 @@ Period**.
 - **A parent/teacher sees nothing, or sees everyone:** check (a) the User has the
   right role, and (b) the link is set — Guardian.User / Student.User / Employee.User
   ID / the Instructor is in the Student Group's Instructors table.
+- **A student's Fees page says "No Fees found" but fees are due:** expected once invoice
+  access is closed (9.4). It doesn't mean nothing is owed; parents see fees on `/parent`.
 - **A student has no LMS progress on the parent portal:** the Student has no **User**,
   or that user isn't enrolled in the LMS batch. Set the Student's email/User and
   re-sync the group (8.2).
