@@ -15,7 +15,10 @@ def get_context(context):
 		frappe.throw(_("Open this page with ?student=<Student ID>."))
 	# get_report_card enforces who may see this student (parent, teacher, staff).
 	context.card = reports.get_report_card(
-		student, frappe.form_dict.get("academic_term"), frappe.form_dict.get("board")
+		student,
+		frappe.form_dict.get("academic_term"),
+		frappe.form_dict.get("board"),
+		frappe.form_dict.get("academic_year"),
 	)
 	context.school = reports.get_school_header()
 	context.title = _("Report Card")

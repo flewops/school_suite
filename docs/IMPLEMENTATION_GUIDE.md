@@ -585,8 +585,8 @@ Status or Student) for subtotals; **save the filter** (e.g. "Class 9 – overdue
 - **Who sees fee figures:** Principal and School Admin see totals, per-class figures
   and per-student balances, but not the invoice and payment documents themselves,
   which belong to the Accountant. A **teacher** has no fee screen. A **parent** sees
-  only their own children's fees on `/parent`. Draft bills are counted nowhere
-  (10.3).
+  only their own children's fees on `/parent`, by academic year, with anything unpaid
+  from earlier years shown separately. Draft bills are counted nowhere (10.3).
 
 ---
 
@@ -602,9 +602,12 @@ Scale (3.1). **Submit.** (Use the Assessment Result Tool to enter a whole group 
 once.)
 
 ### 11.3 🟢 Report card (School Suite, board-configurable)
-Open **`/report-card?student=<Student ID>`** (optionally `&academic_term=Term 1`) for
-a print-ready report card from the submitted Assessment Results. Print it from the
-browser (or *Save as PDF*). Parents reach it from `/parent`; a parent can only open
+Open **`/report-card?student=<Student ID>`** for a print-ready report card from the
+submitted Assessment Results of the current academic year. Add
+`&academic_year=2026-2027` for another year. For one term, add
+`&academic_term=2026-2027 (Term 1)`; this only finds results if the class's Student
+Group has that Academic Term set. Print it from the browser (or *Save as PDF*).
+Parents reach it from `/parent`, for the year picked there; a parent can only open
 their own child's. The layout follows the **Default Board** in School Suite Settings
 (**CBSE / ICSE / State**), or `&board=State` in the link.
 
@@ -666,6 +669,11 @@ their own child's. The layout follows the **Default Board** in School Suite Sett
 - **Parent Portal — `/parent`:** a signed-in parent sees, **per child**, attendance %,
   fee dues & receipts, grades, timetable, and **online-course progress** — Education
   and LMS data combined on one page. 🟢 School Suite; shows only their own children.
+  - The **Academic Year** at the top sets the attendance, fees, grades and timetable
+    shown. It opens on the same year as `/principal` and lists the years their
+    children were enrolled. Online-course progress isn't tied to a year.
+  - **Fees** are those raised for that year. Anything still unpaid from an earlier
+    year shows as **Due from earlier years**, so old dues never drop out of sight.
 - **Principal Dashboard — `/principal`:** for the academic year picked at the top
   (default: Education Settings' current year, else the year containing today):
   class-wise attendance, students below 75% attendance, and fee collection in ₹,

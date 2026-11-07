@@ -18,6 +18,7 @@ from school_suite import api, fees_policy, notify, permissions, reports
 from school_suite import online_learning as ol
 from school_suite.school_suite.doctype.school_suite_settings.school_suite_settings import get_settings
 from school_suite.setup import demo_data, flow_test
+from school_suite.www import parent as parent_page
 
 TEACHER = "teacher_sunita@demo.school"  # teaches Class 1A (Arya, Bodhi)
 GUARDIAN_MEERA = "guardian_meera@demo.school"  # Arya + Bodhi
@@ -345,7 +346,7 @@ class TestSchoolSuite(IntegrationTestCase):
 		frappe.set_user(GUARDIAN_MEERA)
 		self.assertRaises(frappe.PermissionError, api.get_principal_dashboard)
 
-	def test_fee_collection_follows_academic_year(self):
+	def make_past_academic_years(self):
 		for name, start, end in (
 			("2019-2020", "2019-04-01", "2020-03-31"),
 			("2020-2021", "2020-04-01", "2021-03-31"),
@@ -359,6 +360,9 @@ class TestSchoolSuite(IntegrationTestCase):
 						"year_end_date": end,
 					}
 				).insert(ignore_permissions=True)
+
+	def test_fee_collection_follows_academic_year(self):
+		self.make_past_academic_years()
 		# A Fee Schedule raised for 2020-21; only its year and class matter here.
 		schedule = frappe.get_doc(
 			{
@@ -435,6 +439,100 @@ class TestSchoolSuite(IntegrationTestCase):
 		frappe.db.set_single_value("Education Settings", "current_academic_year", "2020-2021")
 		self.assertEqual(api.get_principal_dashboard()["academic_year"], "2020-2021")
 
+	def test_parent_dashboard_and_report_card_follow_academic_year(self):
+		self.make_past_academic_years()
+		arya = student("Arya")
+		term = frappe.get_doc(
+			{
+				"doctype": "Academic Term",
+				"academic_year": "2019-2020",
+				"term_name": "Term 1",
+				"term_start_date": "2019-04-01",
+				"term_end_date": "2019-09-30",
+			}
+		).insert(ignore_permissions=True)
+
+		# Past years' records, inserted directly: only their dates and years matter here.
+		def history(doctype, name, **fields):
+			doc = frappe.new_doc(doctype)
+			doc.update({"name": name, "docstatus": 1, **fields})
+			doc.db_insert()
+
+		history("Student Attendance", "TEST-ATT-2019", student=arya, date="2019-06-03", status="Absent")
+		history("Student Attendance", "TEST-ATT-2020", student=arya, date="2020-06-01", status="Present")
+		for name, date in (("TEST-CS-2019", "2019-06-03"), ("TEST-CS-2020", "2020-06-01")):
+			history(
+				"Course Schedule",
+				name,
+				student_group="Class 1A",
+				schedule_date=date,
+				from_time="09:00:00",
+				to_time="10:00:00",
+			)
+		marks = {"course": "Mathematics", "student": arya, "maximum_score": 100}
+		history(
+			"Assessment Result",
+			"TEST-RES-2019",
+			academic_year="2019-2020",
+			academic_term=term.name,
+			total_score=60,
+			**marks,
+		)
+		history("Assessment Result", "TEST-RES-2020", academic_year="2020-2021", total_score=80, **marks)
+		history(
+			"Program Enrollment",
+			"TEST-PE-2020-ARYA",
+			student=arya,
+			program="Grade 5",
+			academic_year="2020-2021",
+			enrollment_date="2020-04-01",
+		)
+		# One-off invoices: the posting date places them in a year.
+		earlier = self.make_invoice("Arya", rate=3000, submit=True)
+		frappe.db.set_value("Sales Invoice", earlier.name, "posting_date", "2019-10-01")
+		in_year = self.make_invoice("Arya", rate=5000, submit=True)
+		frappe.db.set_value(
+			"Sales Invoice", in_year.name, {"posting_date": "2020-07-01", "outstanding_amount": 2000}
+		)
+
+		data = api.get_student_dashboard(arya, "2020-2021")
+		self.assertEqual(data["academic_year"], "2020-2021")
+		self.assertEqual(data["attendance"]["total"], 1)
+		self.assertEqual([g.name for g in data["grades"]], ["TEST-RES-2020"])
+		self.assertEqual([t.name for t in data["timetable"]], ["TEST-CS-2020"])
+		self.assertEqual([e.academic_year for e in data["education_courses"]], ["2020-2021"])
+		self.assertEqual(
+			data["fees"],
+			{"billed": 5000, "outstanding": 2000, "paid": 3000, "invoice_count": 1, "arrears": 3000},
+		)
+
+		# The current year is the default: past records stay out, but unpaid bills
+		# of every earlier year still show.
+		current = api.get_student_dashboard(arya)
+		self.assertEqual(current["academic_year"], demo_data.academic_year_name())
+		self.assertFalse({"TEST-RES-2019", "TEST-RES-2020"} & {g.name for g in current["grades"]})
+		self.assertFalse({"TEST-CS-2019", "TEST-CS-2020"} & {t.name for t in current["timetable"]})
+		self.assertEqual(current["fees"]["arrears"], 5000)
+
+		# Without a year, as on the transfer certificate, every bill counts.
+		all_years = api.get_fee_summary(arya)
+		self.assertEqual((all_years["outstanding"], all_years["arrears"]), (5000, 0))
+
+		card = reports.get_report_card(arya, academic_year="2020-2021")
+		self.assertEqual(card["academic_year"], "2020-2021")
+		self.assertEqual([s["marks"] for s in card["subjects"]], [80])
+		self.assertEqual(reports.get_report_card(arya)["academic_year"], demo_data.academic_year_name())
+		self.assertEqual(reports.get_report_card(arya)["subjects"], [])
+		by_term = reports.get_report_card(arya, academic_term=term.name)
+		self.assertEqual(by_term["academic_year"], "2019-2020")
+		self.assertEqual([s["marks"] for s in by_term["subjects"]], [60])
+
+		# The selector offers the years Arya was enrolled in, and the one on show.
+		self.assertEqual(
+			parent_page._academic_years([arya], demo_data.academic_year_name()),
+			[demo_data.academic_year_name(), "2020-2021"],
+		)
+
 	def test_udise_export_and_transfer_certificate(self):
 		udise = reports.udise_export()
 		self.assertTrue(udise["_placeholder"])
@@ -452,7 +550,13 @@ class TestSchoolSuite(IntegrationTestCase):
 
 		pages = [
 			(GUARDIAN_MEERA, "parent", "Arya"),
+			(GUARDIAN_MEERA, f"parent?academic_year={demo_data.academic_year_name()}", "Academic Year"),
 			(GUARDIAN_MEERA, f"report-card?student={student('Arya')}", "Report Card"),
+			(
+				GUARDIAN_MEERA,
+				f"report-card?student={student('Arya')}&academic_year={demo_data.academic_year_name()}",
+				demo_data.academic_year_name(),
+			),
 			("Administrator", "principal", "Principal Dashboard"),
 			("Administrator", f"principal?academic_year={demo_data.academic_year_name()}", "Not yet due"),
 			("Administrator", f"transfer-certificate?student={student('Arya')}", "Transfer Certificate"),
