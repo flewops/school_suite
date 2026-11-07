@@ -12,8 +12,9 @@
   <table class="ss-meta">
     <tr><th>{{ _("Student") }}</th><td>{{ card.student }} ({{ card.student_id }})</td>
         <th>{{ _("Board") }}</th><td>{{ card.board }}</td></tr>
-    <tr><th>{{ _("Term") }}</th><td>{{ card.academic_term }}</td>
-        <th>{{ _("Generated on") }}</th><td>{{ frappe.utils.formatdate(card.generated_on) }}</td></tr>
+    <tr><th>{{ _("Academic Year") }}</th><td>{{ card.academic_year or _("All") }}</td>
+        <th>{{ _("Term") }}</th><td>{{ card.academic_term }}</td></tr>
+    <tr><th>{{ _("Generated on") }}</th><td colspan="3">{{ frappe.utils.formatdate(card.generated_on) }}</td></tr>
   </table>
 
   <table class="ss-grid">

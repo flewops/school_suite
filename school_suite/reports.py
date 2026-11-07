@@ -13,7 +13,12 @@ import frappe
 from frappe import _
 from frappe.utils import flt, fmt_money, getdate
 
-from school_suite.api import _assert_can_view_student, get_attendance_summary, get_fee_summary
+from school_suite.api import (
+	_assert_can_view_student,
+	_resolve_academic_year,
+	get_attendance_summary,
+	get_fee_summary,
+)
 from school_suite.permissions import FULL_ACCESS_ROLES, _roles
 from school_suite.school_suite.doctype.school_suite_settings.school_suite_settings import get_settings
 
@@ -26,13 +31,26 @@ BOARD_TEMPLATES = {
 
 
 @frappe.whitelist()
-def get_report_card(student: str, academic_term: str | None = None, board: str | None = None):
-	"""Compile a student's assessment results into a board-formatted report card."""
+def get_report_card(
+	student: str,
+	academic_term: str | None = None,
+	board: str | None = None,
+	academic_year: str | None = None,
+):
+	"""Compile a student's assessment results for one academic year into a
+	board-formatted report card. The year is the one asked for, else that of
+	`academic_term`, else the current one (see _resolve_academic_year)."""
 	_assert_can_view_student(student)
 	board = board if board in BOARD_TEMPLATES else get_settings().default_board or "CBSE"
 	template = BOARD_TEMPLATES.get(board, BOARD_TEMPLATES["CBSE"])
 
+	if academic_term and not academic_year:
+		academic_year = frappe.db.get_value("Academic Term", academic_term, "academic_year")
+	year = _resolve_academic_year(academic_year)
+
 	filters = {"student": student, "docstatus": 1}
+	if year:
+		filters["academic_year"] = year.name
 	if academic_term:
 		filters["academic_term"] = academic_term
 
@@ -65,6 +83,7 @@ def get_report_card(student: str, academic_term: str | None = None, board: str |
 		"student_id": student,
 		"board": board,
 		"template": template,
+		"academic_year": year.name if year else None,
 		"academic_term": academic_term or "All",
 		"subjects": subjects,
 		"overall": {"marks": total, "max": max_total, "percentage": overall_pct},

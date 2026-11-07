@@ -6,6 +6,19 @@
   <h1 style="margin-bottom:4px;">{{ _("Parent Portal") }}</h1>
   <p class="text-muted">{{ _("Signed in as {0}").format(guardian_name) }}</p>
 
+  {% if academic_years %}
+  <form method="get" style="margin:4px 0 12px;">
+    <label for="academic_year">{{ _("Academic Year") }}</label>
+    <select id="academic_year" name="academic_year" onchange="this.form.submit()" style="margin-left:6px;">
+      {% for year in academic_years %}
+      <option value="{{ year }}" {% if year == academic_year %}selected{% endif %}>{{ year }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit">{{ _("Show") }}</button></noscript>
+    <small class="text-muted" style="margin-left:8px;">{{ _("Attendance, fees, grades and timetable are for this year.") }}</small>
+  </form>
+  {% endif %}
+
   {% if not children %}
     <div class="alert alert-info">{{ _("No children are linked to your account yet. Please contact the school office.") }}</div>
   {% endif %}
@@ -35,6 +48,9 @@
           <b style="color:{{ 'var(--red-600,#dc2626)' if c.fees.outstanding else 'var(--green-600,#16a34a)' }};">
             {{ c.fees_fmt.outstanding }}</b>
         </div>
+        {% if c.fees.arrears > 0 %}
+        <div>{{ _("Due from earlier years") }}: <b style="color:var(--red-600,#dc2626);">{{ c.fees_fmt.arrears }}</b></div>
+        {% endif %}
         <small class="text-muted">{{ _("{0} bill(s)").format(c.fees.invoice_count) }}</small>
       </div>
 
@@ -59,7 +75,7 @@
     </div>
 
     <!-- Grades -->
-    <h5 style="margin-top:16px;">{{ _("Recent Grades") }} <a class="small" href="/report-card?student={{ c.name|urlencode }}">{{ _("Report card") }}</a></h5>
+    <h5 style="margin-top:16px;">{{ _("Recent Grades") }} <a class="small" href="/report-card?student={{ c.name|urlencode }}{% if c.academic_year %}&academic_year={{ c.academic_year|urlencode }}{% endif %}">{{ _("Report card") }}</a></h5>
     {% if c.grades %}
       <table class="table table-bordered table-sm" style="margin-bottom:8px;">
         <thead><tr><th>{{ _("Course") }}</th><th>{{ _("Assessment") }}</th><th>{{ _("Score") }}</th><th>{{ _("Grade") }}</th></tr></thead>

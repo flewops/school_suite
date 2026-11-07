@@ -88,15 +88,14 @@ def get_my_children():
 # --------------------------------------------------------------------------- #
 # Per-student building blocks
 # --------------------------------------------------------------------------- #
-def get_attendance_summary(student):
+def get_attendance_summary(student, year=None):
 	# v16 forbids raw SQL aggregates in get_all field strings; count in Python.
 	from collections import Counter
 
-	statuses = frappe.get_all(
-		"Student Attendance",
-		filters={"student": student, "docstatus": 1},
-		pluck="status",
-	)
+	filters = {"student": student, "docstatus": 1}
+	if year:
+		filters["date"] = ["between", [year.year_start_date, year.year_end_date]]
+	statuses = frappe.get_all("Student Attendance", filters=filters, pluck="status")
 	counts = Counter(statuses)
 	present = counts.get("Present", 0)
 	total = len(statuses)
@@ -110,36 +109,35 @@ def get_attendance_summary(student):
 	}
 
 
-# Education v16 bills fees as Sales Invoices (Fee Schedule) carrying `student`;
-# Fees is the legacy path. Both are counted. Sales Orders are not receivables
-# until invoiced, so they are left out.
-FEE_DOCTYPES = ("Sales Invoice", "Fees")
-
-
-def get_fee_summary(student):
+def get_fee_summary(student, year=None):
 	# Submitted only: a draft is not yet a demand on the parent. Credit notes
-	# (returns) carry negative totals and net off.
-	rows = []
-	for doctype in FEE_DOCTYPES:
-		rows += frappe.get_all(
-			doctype,
-			filters={"student": student, "docstatus": 1},
-			fields=["grand_total", "outstanding_amount"],
-		)
-	billed = sum(r.grand_total or 0 for r in rows)
-	outstanding = sum(r.outstanding_amount or 0 for r in rows)
+	# (returns) carry negative totals and net off. With a year, `arrears` is what is
+	# still unpaid from earlier years, so old dues never drop out of sight.
+	in_year, before_year, params = _fee_year_filters(year)
+	params["student"] = student
+	bills = f"from ({_FEE_BILLS}) bills where docstatus = 1 and student = %(student)s"
+	rows = frappe.db.sql(
+		f"select grand_total, outstanding_amount {bills} and {in_year}", params, as_dict=True
+	)
+	arrears = frappe.db.sql(f"select sum(outstanding_amount) {bills} and {before_year}", params)[0][0]
+	billed = sum(flt(r.grand_total) for r in rows)
+	outstanding = sum(flt(r.outstanding_amount) for r in rows)
 	return {
 		"billed": billed,
 		"outstanding": outstanding,
 		"paid": billed - outstanding,
 		"invoice_count": len(rows),
+		"arrears": flt(arrears),
 	}
 
 
-def get_grades(student):
+def get_grades(student, year=None):
+	filters = {"student": student, "docstatus": 1}
+	if year:
+		filters["academic_year"] = year.name
 	return frappe.get_all(
 		"Assessment Result",
-		filters={"student": student, "docstatus": 1},
+		filters=filters,
 		fields=[
 			"name",
 			"course",
@@ -153,13 +151,16 @@ def get_grades(student):
 	)
 
 
-def get_timetable(student):
+def get_timetable(student, year=None):
 	groups = frappe.get_all("Student Group Student", filters={"student": student}, pluck="parent")
 	if not groups:
 		return []
+	filters = {"student_group": ["in", groups]}
+	if year:
+		filters["schedule_date"] = ["between", [year.year_start_date, year.year_end_date]]
 	rows = frappe.get_all(
 		"Course Schedule",
-		filters={"student_group": ["in", groups]},
+		filters=filters,
 		fields=[
 			"name",
 			"course",
@@ -193,10 +194,13 @@ def get_timetable(student):
 	return rows
 
 
-def get_education_courses(student):
+def get_education_courses(student, year=None):
+	filters = {"student": student, "docstatus": 1}
+	if year:
+		filters["academic_year"] = year.name
 	enrollments = frappe.get_all(
 		"Program Enrollment",
-		filters={"student": student, "docstatus": 1},
+		filters=filters,
 		fields=["name", "program", "academic_year", "academic_term"],
 	)
 	for e in enrollments:
@@ -243,19 +247,22 @@ def get_lms_progress(student):
 
 
 @frappe.whitelist()
-def get_student_dashboard(student: str):
-	"""Unified Education + LMS view for one student (authorisation enforced)."""
+def get_student_dashboard(student: str, academic_year: str | None = None):
+	"""Unified Education + LMS view for one student (authorisation enforced), for one
+	academic year (see _resolve_academic_year). LMS progress isn't tied to a year."""
 	_assert_can_view_student(student)
 	base = frappe.db.get_value("Student", student, ["name", "student_name", "image", "user"], as_dict=True)
 	if not base:
 		frappe.throw(_("Student not found"), frappe.DoesNotExistError)
+	year = _resolve_academic_year(academic_year)
 	base.update(
 		{
-			"attendance": get_attendance_summary(student),
-			"fees": get_fee_summary(student),
-			"grades": get_grades(student),
-			"timetable": get_timetable(student),
-			"education_courses": get_education_courses(student),
+			"academic_year": year.name if year else None,
+			"attendance": get_attendance_summary(student, year),
+			"fees": get_fee_summary(student, year),
+			"grades": get_grades(student, year),
+			"timetable": get_timetable(student, year),
+			"education_courses": get_education_courses(student, year),
 			"lms": get_lms_progress(student),
 		}
 	)
@@ -297,6 +304,9 @@ def _year_date_condition(year):
 # year: the start of the year it was raised for (its Fee Schedule's year, or the
 # legacy Fees' own), else its posting date (a one-off invoice). So fees posted in
 # March for the year starting in April count in that new year.
+# Education v16 bills fees as Sales Invoices (Fee Schedule) carrying `student`;
+# Fees is the legacy path. Both are counted. Sales Orders are not receivables
+# until invoiced, so they are left out.
 _FEE_BILLS = """
 	select si.student, si.docstatus, si.grand_total, si.outstanding_amount, si.due_date,
 	       coalesce(ay.year_start_date, si.posting_date) as year_date, fs.program
@@ -313,17 +323,25 @@ _FEE_BILLS = """
 """
 
 
+def _fee_year_filters(year):
+	"""SQL conditions on _FEE_BILLS for the bills raised for `year` and for earlier
+	years, and their params. Without a year every bill counts and none is earlier."""
+	if not year:
+		return "1=1", "1=0", {}
+	return (
+		"year_date between %(start)s and %(end)s",
+		"year_date < %(start)s",
+		{"start": year.year_start_date, "end": year.year_end_date},
+	)
+
+
 def _fee_collection(year):
 	"""Fee figures for `year`: billed, collected and outstanding (split into overdue
 	and not yet due) for the bills raised for that year, by class too; unpaid bills of
 	earlier years as arrears; and the number of draft bills, which are not counted
 	because they are not yet a demand on the parent."""
-	params = {"today": nowdate()}
-	if year:
-		params.update(start=year.year_start_date, end=year.year_end_date)
-		in_year, before_year = "year_date between %(start)s and %(end)s", "year_date < %(start)s"
-	else:
-		in_year, before_year = "1=1", "1=0"
+	in_year, before_year, params = _fee_year_filters(year)
+	params["today"] = nowdate()
 
 	rows = frappe.db.sql(
 		f"""
